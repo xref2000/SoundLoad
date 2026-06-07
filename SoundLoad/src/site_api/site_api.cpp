@@ -559,6 +559,7 @@ sc_upload::sc_upload(std::wstring url)
 			};
 
 		add_comment(L"Upload date: ",          "created_at");
+		add_comment(L"Original title: ",       "title");
 		add_comment(L"Original description: ", "description");
 		add_comment(L"Original tags: ",        "tag_list");
 	}

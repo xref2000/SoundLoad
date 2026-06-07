@@ -11,7 +11,7 @@ namespace cfg
 	{
 		std::cout << "[*] ABOUT THIS PROGRAM\n";
 		std::cout << "All valid arguments are listed below. You MUST surround any arguments with spaces in quotes.\n";
-		std::cout << "Source: https://github.com/islipnot/SoundLoad\n";
+		std::cout << "Source code: https://github.com/xref2000/SoundLoad\n";
 
 		std::cout << "\n[+] CONFIGURATION\n";
 		std::cout << "-cid <client_id>       ; [SAVEABLE] sets the client ID\n";
