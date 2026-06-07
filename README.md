@@ -82,8 +82,8 @@ c:>sl https://soundcloud.com/sellasouls/bdayy-sexxx -n-audio -art -save
 ```
 
 ## Notes
-- Windows doesn't parse metadata properly, so if the comments do not appear to have been saved properly. 
-  VLC doesn't have this issue, so check there if something seems out of place.
+- Windows doesn't parse metadata properly, VLC doesn't have this issue, so check there if something 
+  seems out of place.
 - `nlohmann::json::value` has multiple modifications in this repo - check `pch.hpp` for more info.
 - There is full unicode support both on command line and in parsing metadata, though it's tedious to 
   actually get proper encoding on command line in Windows.
