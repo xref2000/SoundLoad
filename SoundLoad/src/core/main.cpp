@@ -2,19 +2,57 @@
 #include "../config/config.hpp"
 #include "../site_api/site_api.hpp"
 
-static bool handle_config()
+static void fix_path(std::wstring& path)
 {
-	const std::wstring path = cfg::program_dir + L"\\cfg.json";
-	const bool cfg_exists = std::filesystem::exists(path);
-
-	std::fstream cfg_file;
-	cfg_format cfg_data_raw = {};
-
-	// Reading from config if it exists
-
-	if (cfg_exists)
+	if (!path.empty())
 	{
-		cfg_file.open(path, std::ios::in);
+		std::replace(path.begin(), path.end(), L'\\', L'/');
+		if (path.back() != L'/') path.push_back(L'/');
+	}
+}
+
+static bool save_config(cfg_format& cfg_data_raw)
+{
+	if (cfg::f.save_config || cfg::f.save_cid)
+	{
+		if (cfg::f.save_config)
+		{
+			cfg::save_config(cfg_data_raw);
+		}
+		else
+		{
+			cfg_data_raw.cid = cfg::client_id;
+		}
+
+		std::fstream cfg_file(cfg::path_cache, std::ios::out | std::ios::trunc);
+		if (cfg_file.fail())
+		{
+			err::log("failed to open/create cfg.json");
+			return false;
+		}
+
+		try
+		{
+			cfg_file << Json(cfg_data_raw).dump();
+		}
+		catch (...)
+		{
+			cfg_file.close();
+			err::log("failed to save config");
+			return false;
+		}
+
+		cfg_file.close();
+	}
+
+	return true;
+}
+
+static bool read_config(cfg_format& cfg_data_raw)
+{
+	if (std::filesystem::exists(cfg::path_cache))
+	{
+		std::fstream cfg_file(cfg::path_cache, std::ios::in);
 		if (cfg_file.fail())
 		{
 			err::log("failed to open cfg.json");
@@ -41,32 +79,46 @@ static bool handle_config()
 	{
 		cfg::f.config_just_created = true;
 	}
-	
-	// Saving config if requested
 
-	if (cfg::f.save_config)
+	return true;
+}
+
+static bool init_program(int argc, wchar_t* argv[], cfg_format& raw_cfg)
+{
+	if (!cfg::parse_arguments(argc, argv))
 	{
-		cfg::save_config(cfg_data_raw);
-		
-		cfg_file.open(path, std::ios::out | std::ios::trunc);
-		if (cfg_file.fail())
+		return false;
+	}
+
+	const size_t old_size = cfg::path_cache.size();
+	cfg::path_cache += L"\\cfg.json";
+
+	if (!read_config(raw_cfg))
+	{
+		return false;
+	}
+
+	if (!cfg::f.no_link_provided && cfg::client_id.empty() && !get_client_id())
+	{
+		err::log("no client ID provided/resolved");
+		return false;
+	}
+
+	if (cfg::f.add_to_path || cfg::f.config_just_created)
+	{
+		cfg::path_cache[old_size] = L'\0';
+		cfg::add_to_path(); // failure is ignored as its non-vital to primary functionality
+		cfg::path_cache[old_size] = L'\\';
+	}
+
+	if (cfg::f.no_link_provided)
+	{
+		if (save_config(raw_cfg))
 		{
-			err::log("failed to open/create cfg.json");
-			return false;
+			std::cout << "\n[!] INPUT HANDLED\n";
 		}
 
-		try
-		{
-			cfg_file << Json(cfg_data_raw).dump(4);
-		}
-		catch (...)
-		{
-			cfg_file.close();
-			err::log("failed to save config");
-			return false;
-		}
-
-		cfg_file.close();
+		return false;
 	}
 
 	return true;
@@ -74,55 +126,19 @@ static bool handle_config()
 
 int wmain(int argc, wchar_t* argv[])
 {
-	// Parsing arguments
-
-	if (!cfg::parse_arguments(argc, argv))
+	cfg_format raw_cfg = {};
+	if (!init_program(argc, argv, raw_cfg))
 		return 1;
 
-	// Reading/saving config
-
-	if (!handle_config())
-		return 2;
-
-	// Adding program to PATH variables
-
-	if (cfg::f.add_to_path || cfg::f.config_just_created)
-		cfg::add_to_path(); // failure is ignored as its non-vital to primary functionality
-
-	cfg::program_dir.clear();
-
-	// Preparing for download(s)
-
-	if (cfg::f.no_link_provided)
-	{
-		std::cout << "\n[!] INPUT HANDLED\n";
-		return 0;
-	}
-	
-	if (cfg::client_id.empty())
-	{
-		err::log("no client ID provided");
-		return 3;
-	}
-
-	{
-		auto fix_path = [](std::wstring& path)
-			{
-				if (!path.empty())
-				{
-					std::replace(path.begin(), path.end(), L'\\', L'/');
-					if (path.back() != L'/') path.push_back(L'/');
-				}
-			};
-
-		fix_path(cfg::audio_out_dir);
-		fix_path(cfg::image_out_dir);
-	}
+	fix_path(cfg::audio_out_dir);
+	fix_path(cfg::image_out_dir);
 
 	sc_upload post(argv[1]);
 	if (post.f.error_occured || !post.download()) 
-		return 4;
+		return 1;
 
 	std::cout << "\n[!] DOWNLOAD(s) COMPLETE\n";
+
+	save_config(raw_cfg); // this is done after downloads complete incase request_failed had to get a new CID
 	return 0;
 }

@@ -1,13 +1,11 @@
 #pragma once
 
-#define request_failed(response) response.status_code != 200 // decltype(response) == cpr::Response
-
 struct sc_upload
 {
 private:
 
 	//
-	//// PRIVATE MEMBER VARIABLES
+	//// PRIVATE MEMBERS
 	//
 
 	std::string      streaming_url;
@@ -31,11 +29,11 @@ private:
 	//// PRIVATE METHODS
 	//
 
-	bool download_track();
+	bool download_track(void);
 
-	bool download_album();
+	bool download_album(void);
 
-	bool download_cover() const;
+	bool download_cover(void) const;
 
 	bool parse_manifest(const std::string& raw_data, std::string& buffer) const;
 
@@ -52,29 +50,27 @@ private:
 public:
 
 	//
-	//// PUBLIC MEMBER VARIABLES
+	//// PUBLIC MEMBERS
 	//
 
 	struct
 	{
-		USHORT error_occured : 1; // An error occured in the constructor
-		USHORT is_track      : 1; // Object represents a singular track
-		USHORT is_album      : 1; // Object represents an album or playlist
-		USHORT is_m4a_media  : 1; // Lossless media transcoding (.m3u8 -> .m4a)
-		USHORT is_hls_mpeg   : 1; // HLS media transcoding (.m3u -> .mp3)
+		// 5/8 bits used
+
+		UINT8 error_occured : 1; // An error occured in the constructor
+		UINT8 is_track      : 1; // Object represents a singular track
+		UINT8 is_album      : 1; // Object represents an album or playlist
+		UINT8 is_m4a_media  : 1; // Lossless media transcoding (.m3u8 -> .m4a)
+		UINT8 is_hls_mpeg   : 1; // HLS media transcoding (.m3u -> .mp3)
 	} f = {};
 
 	//
-	//// PUBLIC MEMBER FUNCTIONS
+	//// PUBLIC METHODS
 	//
 
 	sc_upload(std::wstring url);
 
-	//
-	//// HELPERS
-	//
-
-	bool download()
+	bool download(void)
 	{
 		if (cfg::f.download_art_seperate)
 		{
@@ -97,3 +93,6 @@ public:
 		return this->f.is_track ? this->download_track() : this->download_album();
 	}
 };
+
+// Requests a fresh client ID from SoundCloud
+bool get_client_id(void);

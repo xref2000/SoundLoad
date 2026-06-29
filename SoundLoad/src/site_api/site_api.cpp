@@ -15,31 +15,6 @@ static void mb_to_wide(const std::string& src, std::wstring& dst)
 	}
 }
 
-static bool resolve_post(std::wstring& url, Json& buffer)
-{
-	// Erasing tracking data from link
-
-	if (url.find(L'?') != std::string::npos)
-	{
-		url.erase(url.find_first_of(L'?'));
-	}
-
-	// Resolving post
-
-	std::string mb_url(url.size(), 0);
-	WideCharToMultiByte(CP_UTF8, 0, url.c_str(), -1, mb_url.data(), mb_url.size(), nullptr, nullptr);
-
-	const cpr::Response r = cpr::Get(cpr::Url{ "https://api-v2.soundcloud.com/resolve?url=" + mb_url + "&client_id=" + cfg::client_id });
-	if (request_failed(r))
-	{
-		err::log_net(r);
-		return false;
-	}
-
-	buffer = Json::parse(r.text);
-	return true;
-}
-
 static size_t read_file(const std::wstring& path, char** buffer)
 {
 	std::ifstream file(path, std::ios::binary | std::ios::ate);
@@ -58,6 +33,107 @@ static size_t read_file(const std::wstring& path, char** buffer)
 
 	*buffer = raw_data;
 	return sz;
+}
+
+bool request_failed(cpr::Response& r)
+{
+	// This function will return true is the request succeeded. Otherwise it will attempt 
+	// to get a fresh CID and retry the request with it. For that reason, this function 
+	// should only be used on requests that included a CID.
+
+	if (r.status_code == 200)
+	{
+		return false;
+	}
+
+	if (cfg::f.save_cid || !get_client_id())
+	{
+		err::log_net(r);
+		return true;
+	}
+
+	cpr::Url url = r.url.str();
+
+	constexpr char cid_str[] = "client_id=";
+	size_t pos = url.str().find(cid_str);
+	if (pos == std::string::npos)
+	{
+		err::log_net(r);
+		return true;
+	}
+
+	const_cast<std::string&>(url.str()).erase((pos + _countof(cid_str)) - 1);
+	url += cfg::client_id;
+
+	r = cpr::Get(url);
+	if (r.status_code != 200)
+	{
+		err::log_net(r);
+		return true;
+	}
+	
+	return false;
+}
+
+static bool resolve_post(std::wstring& url, Json& buffer)
+{
+	// Erasing tracking data from link
+
+	if (url.find(L'?') != std::string::npos)
+		url.erase(url.find_first_of(L'?'));
+	
+	// Resolving post
+
+	std::string mb_url(url.size(), 0);
+	WideCharToMultiByte(CP_UTF8, 0, url.c_str(), -1, mb_url.data(), static_cast<int>(mb_url.size()), nullptr, nullptr);
+
+	cpr::Response r = cpr::Get(cpr::Url{ "https://api-v2.soundcloud.com/resolve?url=" + mb_url + "&client_id=" + cfg::client_id });
+	if (request_failed(r)) return false;
+
+	buffer = Json::parse(r.text);
+	return true;
+}
+
+bool get_client_id(void)
+{
+	auto handle_parsing_err = [](void)
+		{
+			if (cfg::client_id.empty())
+			{
+				err::log("failed to automatically resolve client ID, please provide one using the -cid command");
+				return false;
+			}
+			else
+			{
+				err::warn("failed to resolve client ID, falling back to user provided ID");
+				return true;
+			}
+		};
+
+	cpr::Response r = cpr::Get(cpr::Url{ "https://soundcloud.com/" });
+	if (r.status_code != 200)
+	{
+		err::log_net(r);
+		return false;
+	}
+
+	constexpr char id_string[] = "\"data\":{\"id\":\"";
+	const size_t id_pos = r.text.find(id_string);
+	if (id_pos == std::string::npos || r.text.find(id_string, id_pos + 1) != std::string::npos)
+	{
+		return handle_parsing_err();
+	}
+
+	const size_t offset = (id_pos + _countof(id_string)) - 1;
+	const size_t end_pos = r.text.find('\"', offset);
+	if (end_pos == std::string::npos)
+	{
+		return handle_parsing_err();
+	}
+
+	cfg::client_id = r.text.substr(offset, end_pos - offset);
+	cfg::f.save_cid = 1; // CID is automatically saved to cfg.json to minimize the amount of requests that must be made in the future
+	return true;
 }
 
 //
@@ -139,10 +215,9 @@ void sc_upload::add_m4a_tag(const std::wstring& path) const
 			return;
 		}
 
-		const cpr::Response r = cpr::Get(cpr::Url{ cover_url });
+		cpr::Response r = cpr::Get(cpr::Url{ cover_url });
 		if (request_failed(r))
 		{
-			err::log_net(r);
 			file.save();
 			return;
 		}
@@ -205,10 +280,9 @@ void sc_upload::add_mp3_tag(const std::wstring& path) const
 			return;
 		}
 
-		const cpr::Response r = cpr::Get(cpr::Url{ cover_url });
+		cpr::Response r = cpr::Get(cpr::Url{ cover_url });
 		if (request_failed(r))
 		{
-			err::log_net(r);
 			file.save();
 			delete cover;
 			return;
@@ -263,12 +337,8 @@ bool sc_upload::parse_manifest(const std::string& raw_data, std::string& buffer)
 		}
 		else continue;
 
-		const cpr::Response r = cpr::Get(cpr::Url{ line });
-		if (request_failed(r))
-		{
-			err::log_net(r);
-			return false;
-		}
+		cpr::Response r = cpr::Get(cpr::Url{ line });
+		if (request_failed(r)) return false;
 
 		buffer += r.text;
 	}
@@ -350,23 +420,15 @@ bool sc_upload::get_streaming_url(const Json& json)
 	return true;
 }
 
-bool sc_upload::download_track()
+bool sc_upload::download_track(void)
 {
 	// Downloading track (MP3 or HLS)
 
 	cpr::Response r = cpr::Get(cpr::Url{ this->streaming_url });
-	if (request_failed(r))
-	{
-		err::log_net(r);
-		return false;
-	}
+	if (request_failed(r)) return false;
 
 	r = cpr::Get(cpr::Url{ Json::parse(r.text)["url"].get<std::string>()});
-	if (request_failed(r))
-	{
-		err::log_net(r);
-		return false;
-	}
+	if (request_failed(r)) return false;
 
 	this->streaming_url.clear();
 	
@@ -421,19 +483,15 @@ bool sc_upload::download_track()
 	return true;
 }
 
-bool sc_upload::download_album()
+bool sc_upload::download_album(void)
 {
 	return true;
 }
 
-bool sc_upload::download_cover() const
+bool sc_upload::download_cover(void) const
 {
-	const cpr::Response r = cpr::Get(cpr::Url{ this->artwork_url });
-	if (request_failed(r))
-	{
-		err::log_net(r);
-		return false;
-	}
+	cpr::Response r = cpr::Get(cpr::Url{ this->artwork_url });
+	if (request_failed(r)) return false;
 
 	const std::wstring& file_name = cfg::g_data.image_file_name.empty() ? this->title : cfg::g_data.image_file_name;
 	const std::wstring path = cfg::image_out_dir + std::regex_replace(file_name, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".jpg";

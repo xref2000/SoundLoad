@@ -40,14 +40,14 @@ using Json = nlohmann::json;
 
 // COMPILE/RUNTIME FNV1A HASHING (case-insensitive)
 
-__forceinline consteval uint32_t hash(const wchar_t* input, const uint32_t val = 0x811C9DC5u) noexcept
+consteval uint32_t hash(const wchar_t* input, const uint32_t val = 0x811C9DC5u) noexcept
 {
 	wchar_t ch = input[0];
 	if (ch < 91 && ch > 64) ch += 32;
 	return !ch ? val : hash(input + 1, (val ^ ch) * 0x01000193u);
 }
 
-__forceinline constexpr uint32_t hash_rt(const wchar_t* input, const uint32_t val = 0x811C9DC5u) noexcept
+inline constexpr uint32_t hash_rt(const wchar_t* input, const uint32_t val = 0x811C9DC5u) noexcept
 {
 	wchar_t ch = input[0];
 	if (ch < 91 && ch > 64) ch += 32;
@@ -56,7 +56,15 @@ __forceinline constexpr uint32_t hash_rt(const wchar_t* input, const uint32_t va
 
 namespace err
 {
-	// These functions are used instead of printf to avoid repetitive code
+	template <typename... t> void warn(std::format_string<t...> fmt, t&&... args)
+	{
+		std::cerr << "WARNING: " << std::format(fmt, std::forward<t>(args)...) << '\n';
+	}
+
+	template <typename... t> void warn_ex(std::format_string<t...> fmt, t&&... args)
+	{
+		std::cerr << "WARNING: " << std::format(fmt, std::forward<t>(args)...) << "\nError code: 0x" << std::hex << GetLastError() << std::dec << '\n';
+	}
 
 	template <typename... t> void log(std::format_string<t...> fmt, t&&... args)
 	{
