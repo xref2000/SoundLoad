@@ -43,7 +43,7 @@ namespace cfg
 
 	struct track_data_t
 	{
-		// Output data 
+		// Output data
 
 		std::wstring audio_file_name; // Name for downloaded audio. Derived from track title by default.
 		std::wstring image_file_name; // Name for downloaded cover art. Derived from track title by default.

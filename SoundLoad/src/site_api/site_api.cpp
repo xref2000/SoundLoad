@@ -491,7 +491,7 @@ bool sc_upload::download_album(void)
 bool sc_upload::download_cover(void) const
 {
 	cpr::Response r = cpr::Get(cpr::Url{ this->artwork_url });
-	if (request_failed(r)) return false;
+	if (r.status_code != 200) return false;
 
 	const std::wstring& file_name = cfg::g_data.image_file_name.empty() ? this->title : cfg::g_data.image_file_name;
 	const std::wstring path = cfg::image_out_dir + std::regex_replace(file_name, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".jpg";

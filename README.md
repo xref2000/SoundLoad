@@ -1,5 +1,5 @@
 # SoundLoad
-The goal of this project is to help all SoundCloud users save their favorite songs 
+The goal of this project is to help SoundCloud users save their favorite songs 
 with as much data as possible preserved. I made this to simplify the process of 
 porting SoundCloud songs to other platforms, which can be very tedious normally. 
 If you value the use of local files, I strongly suggest apple music. They have an 
@@ -16,7 +16,7 @@ negligible anyway, so this should only be used if you care about archiving.
 | ------------- | :------: | ---------------------------------------------------- | :-------: | :-------------: |
 | `-cid`        |     —    | SoundCloud client ID                                 |     ✅    |        ✅      |
 | `-pvars`      |     —    | Adds program to user PATH variables                  |     ❌    |        ✅      |
-| `-save`       |     —    | Saves applicable arguments to `cfg.json`             |     ❌    |        ✅      |
+| `-save`       |   `-s`   | Saves applicable arguments to `cfg.json`             |     ❌    |        ✅      |
 | `-img-name`   | `-iname` | Cover art file name                                  |     ❌    |        ✅      |
 | `-img-dst`    |  `-idst` | Cover art output directory                           |     ✅    |        ✅      |
 | `-img-src`    |  `-isrc` | Cover art source (path, SoundCloud link, image link) |     ❌    |        ✅      |
@@ -29,11 +29,11 @@ negligible anyway, so this should only be used if you care about archiving.
 | `-aac`        |     —    | Enables lossless downloads                           |     ✅    |        ✅      |
 | `-n-aac`      |     —    | Disables lossless downloads                          |     ✅    |        ✅      |
 | `-title`      |   `-t`   | Audio tag title                                      |     ❌    |        ❌      |
-| `-comment`    |   `-c`   | Audio tag comment                                    |     ❌    |        ❌      |
+| `-comment`    |   `-c`   | Audio tag comment                                    |     ❌    |        ✅      |
 | `-artists`    |   `-a`   | Audio tag contributing artists                       |     ❌    |        ❌      |
 | `-a-artist`   |   `-aa`  | Audio tag album artist                               |     ❌    |        ✅      |
-| `-album`      |   `-al`  | Audio tag album                                      |     ❌    |        ❌      |
-| `-genre`      |   `-g`   | Audio tag genre                                      |     ❌    |        ❌      |
+| `-album`      |   `-al`  | Audio tag album                                      |     ❌    |        ✅      |
+| `-genre`      |   `-g`   | Audio tag genre                                      |     ❌    |        ✅      |
 | `-num`        |   `-n`   | Audio tag track number                               |     ❌    |        ❌      |
 | `-year`       |   `-y`   | Audio tag year                                       |     ❌    |        ✅      |
 
@@ -43,7 +43,7 @@ negligible anyway, so this should only be used if you care about archiving.
 ### Setting basic config info
 By running this, the audio output dir and cover art output dir will be saved to cfg.json.
 ```
-c:>sl -adst "c:/music" -idst "c:/art" -save
+c:>sl -adst c:/music -idst c:/art -s
 ```
 
 ### Downloading a song
@@ -64,10 +64,22 @@ c:>sl https://soundcloud.com/axxturel/sets/s-kkkult-s-kkkult-s-kkkkult
 By using the `-art` arg, you tell the program to seperately download the cover art from the track. It 
 should be noted that this option can be saved to cfg.json. This is useful for anyone archiving 
 underground music, where cover art is often changed or lost to time. The `-n-audio` arg is also used 
-and saved, preventing an MP3 from being downloaded.
+and saved, preventing the track itself from being downloaded.
 ```
-c:>sl https://soundcloud.com/sellasouls/bdayy-sexxx -n-audio -art -save
+c:>sl https://soundcloud.com/sellasouls/bdayy-sexxx -n-audio -art -s
 ```
+
+## PATH variables
+Adding the program to your PATH variables will basically tell the command prompt 
+what directories to check when you enter a command. For example, if you type `sl.exe` 
+into cmd, it will check your working directory aswell as all directories specified 
+in your PATH vars to try and find where `sl.exe` exists. This is a huge time saver 
+as it allows you to quickly open cmd and use the program no matter your working 
+directory. When you run the program for the first time, you'll be asked whether 
+or not you'd like to add the program to your PATH vars, but you can do it at a later 
+time with the `-pvars` argument. Because you're adding the programs directory, 
+any other files in that directory will also be resolved by cmd, so make sure you 
+keep the program and it's dependencies in it's own directory to avoid name conflicts.
 
 ## Client IDs
 A client ID is a string that must be appended to certain requests in order for 
@@ -77,7 +89,7 @@ but in the case that it fails, you can provide a client ID manually like this:
 - Open browser dev tools (`ctrl+shift+i`)
 - Go to the network tab
 - Go to [SoundCloud](https://soundcloud.com)
-- Filter URL's with "client_id="
+- Filter URLs with "client_id="
 - Find a request with a client ID in it
 - Pass that ID to `sl.exe` as the value for the `-cid` argument
 
@@ -88,11 +100,11 @@ a client ID automatically, as failure is indicative of a SoundCloud update.
 - Windows doesn't parse metadata properly. VLC doesn't have this issue, so check there if something 
   seems out of place.
 - `nlohmann::json::value` has multiple modifications in this repo - check `pch.hpp` for more info.
-- There is full unicode support both on command line and in parsing metadata, though it's tedious to 
-  actually get proper encoding on command line in Windows.
+- Unicode characters are supported, though they won't be displayed properly on command line due to 
+  the limited character set. You can safely ignore that and paste any unicode character, it will save as expected.
 - In the `comments` property of downloaded audio tags, the program will store the exact timestamp 
-  of the upload, the original description, and the original tags. You can easily add on to this list 
-  in `site_api.cpp/sc_upload::sc_upload()` by using the `add_comment` lambda.
+  of the upload and the the original title/description/tags. You can easily add on to this list 
+  in `site_api.cpp/sc_upload::sc_upload()` using the `add_comment` lambda.
 - The following characters will be replaced with an underscore in file names: `< > : " \ | ? *`
 - Go+ songs cannot be downloaded (may work if you use a CID generated by a Go+ account, not tested).
 - `cfg.json` must not be modified manually for now. The json library I'm using doesn't have std::wstring
