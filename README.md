@@ -91,7 +91,7 @@ feel free to open an issue on this repository or reach out via git@vmcall.dev an
 what you'd like added and I will add it. That being said, the source code is structured in 
 such a way that makes adding new metadata fields extremely simple. First, go to 
 `https://api-v2.soundcloud.com/resolve?url=put_link_here&client_id=your_cid` and take note 
-of any fields you would like to archive. You then go to `sc_api.cpp/sc_upload::sc_upload` 
+of any fields you would like to archive. You then go to `sc_api.cpp/sc_upload::create_comments` 
 and use the `add_comment` lambda, which takes just one simple line of code. Below is a 
 snippet from the source code with extra comments added explaining exactly how it works 
 and showing multiple examples for those who would like to do it on their own but don't 
@@ -116,8 +116,6 @@ auto add_comment = [this, &post_data, &temp](PCWSTR label, PCSTR value)
 			// Appends the desired metadata value to the label. This results in 
 			// something like "Original title: example song title"
 			this->description += label + temp;
-
-			temp.clear();
 		}
 	};
 
