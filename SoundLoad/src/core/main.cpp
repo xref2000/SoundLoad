@@ -128,14 +128,19 @@ int wmain(int argc, wchar_t* argv[])
 {
 	cfg_format raw_cfg = {};
 	if (!init_program(argc, argv, raw_cfg))
+	{
+		system("pause"); // half the world would give up when double clicking does nothing
 		return 1;
+	}
 
 	fix_path(cfg::audio_out_dir);
 	fix_path(cfg::image_out_dir);
 
 	sc_upload post(argv[1]);
-	if (post.f.error_occured || !post.download()) 
+	if (post.f.error_occured || !post.download())
+	{
 		return 1;
+	}
 
 	std::cout << "\n[!] DOWNLOAD(s) COMPLETE\n";
 

@@ -12,7 +12,7 @@ namespace cfg
 		std::cout << "[*] ABOUT THIS PROGRAM\n";
 		std::cout << "All valid arguments are listed below. You MUST surround any arguments with cmd operators (e.g. < | & ?) or spaces in quotes. THIS INCLUDES LINKS WITH '?' IN THEM!\n";
 		std::cout << "Some features provide short and long versions of the same argument. The short version is in parenthesis at the start of the line, if it exists.\n";
-		std::cout << "Source code: https://github.com/xref2000/SoundLoad\n";
+		std::cout << "For detailed usage instructions: https://github.com/xref2000/SoundLoad\n";
 
 		std::cout << "\n[+] GENERAL CONFIGURATION\n";
 		std::cout << "-audio     ; [SAVEABLE, DEFAULT] enables the download of audio files\n";
