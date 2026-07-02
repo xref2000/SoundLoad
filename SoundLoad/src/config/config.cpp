@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "logs.hpp"
 #include "config.hpp"
 
 namespace cfg

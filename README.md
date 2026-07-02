@@ -10,10 +10,6 @@ If you prefer porting music to Spotify or Apple Music, you should not enable AAC
 downloads, as neither platforms will play them. The difference in bitrate is
 negligible anyway, so this should only be used if you care about archiving.
 
-Any programmer seeing this will surely wonder why I would write this in C++ when 
-golang is so much easier. I did it because this is quite different from every other 
-C++ project I've worked on, so I thought it would be good practice.
-
 ## Installation & usage
 If you know how to use command line programs you can skip this. If you don't, 
 follow these steps to use the program:

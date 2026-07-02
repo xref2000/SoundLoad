@@ -53,36 +53,3 @@ inline constexpr uint32_t hash_rt(const wchar_t* input, const uint32_t val = 0x8
 	if (ch < 91 && ch > 64) ch += 32;
 	return !ch ? val : hash_rt(input + 1, (val ^ ch) * 0x01000193u);
 }
-
-namespace err
-{
-	template <typename... t> void warn(std::format_string<t...> fmt, t&&... args)
-	{
-		std::cerr << "WARNING: " << std::format(fmt, std::forward<t>(args)...) << '\n';
-	}
-
-	template <typename... t> void warn_ex(std::format_string<t...> fmt, t&&... args)
-	{
-		std::cerr << "WARNING: " << std::format(fmt, std::forward<t>(args)...) << "\nError code: 0x" << std::hex << GetLastError() << std::dec << '\n';
-	}
-
-	template <typename... t> void log(std::format_string<t...> fmt, t&&... args)
-	{
-		std::cerr << "ERROR: " << std::format(fmt, std::forward<t>(args)...) << '\n';
-	}
-
-	template <typename... t> void log(std::wformat_string<t...> fmt, t&&... args)
-	{
-		std::wcerr << L"ERROR: " << std::format(fmt, std::forward<t>(args)...) << L'\n';
-	}
-
-	template <typename... t> void log_ex(std::format_string<t...> fmt, t&&... args)
-	{
-		std::cerr << "ERROR: " << std::format(fmt, std::forward<t>(args)...) << "\nError code: 0x" << std::hex << GetLastError() << std::dec << '\n';
-	}
-
-	inline void log_net(const cpr::Response& r)
-	{
-		std::cerr << "ERROR: request to \"" << r.url << "\" failed with code " << r.status_code << '\n';
-	}
-}

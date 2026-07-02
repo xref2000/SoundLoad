@@ -82,22 +82,22 @@ namespace cfg
 	//// HELPERS
 	//
 
-	__forceinline bool audio_flags_set(void) noexcept
+	__forceinline bool audio_flags_set(void)
 	{
 		return cfg::f.download_audio || cfg::f.disable_audio_download;
 	}
 
-	__forceinline bool art_flags_set(void) noexcept
+	__forceinline bool art_flags_set(void)
 	{
 		return cfg::f.download_art_seperate || cfg::f.disable_art_download;
 	}
 
-	__forceinline bool aac_flags_set(void) noexcept
+	__forceinline bool aac_flags_set(void)
 	{
 		return cfg::f.get_aac_transcoding || cfg::f.no_aac_transcodings;
 	}
 
-	__forceinline bool cover_art_only(void) noexcept
+	__forceinline bool cover_art_only(void)
 	{
 		return cfg::f.download_art_seperate && cfg::f.disable_audio_download;
 	}

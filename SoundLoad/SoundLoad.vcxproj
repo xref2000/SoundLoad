@@ -173,6 +173,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\config\config.hpp" />
+    <ClInclude Include="src\core\logs.hpp" />
     <ClInclude Include="src\core\pch.hpp" />
     <ClInclude Include="src\site_api\site_api.hpp" />
   </ItemGroup>

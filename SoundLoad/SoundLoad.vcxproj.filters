@@ -39,5 +39,8 @@
     <ClInclude Include="src\core\pch.hpp">
       <Filter>src\core</Filter>
     </ClInclude>
+    <ClInclude Include="src\core\logs.hpp">
+      <Filter>src\core</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

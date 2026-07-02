@@ -8,6 +8,11 @@ private:
 	//// PRIVATE MEMBERS
 	//
 
+	Json post_data;
+
+	std::mutex hls_mutex;
+	std::atomic<int> active_threads = 0;
+
 	std::string      streaming_url;
 	std::vector<int> track_ids;
 
@@ -35,17 +40,33 @@ private:
 
 	bool download_cover(void) const;
 
-	bool parse_manifest(const std::string& raw_data, std::string& buffer) const;
+	void get_hls_part(const std::string url, std::vector<std::pair<int, std::string>>& parts, int list_idx);
+
+	bool parse_manifest(const std::string& raw_data, std::vector<std::pair<int, std::string>>& buffer);
 
 	bool get_streaming_url(const Json& data);
 
 	bool get_track_ids(const Json& data);
 
-	bool get_cover_link(std::string& buffer) const;
+	bool get_cover_art(cpr::Response& buffer) const;
+
+	void store_basic_tag_data(TagLib::Tag* tag) const;
 
 	void add_m4a_tag(const std::wstring& path) const;
 
 	void add_mp3_tag(const std::wstring& path) const;
+
+	void get_misc_metadata(void);
+
+	void create_comments(void);
+
+	void get_album(void);
+
+	void get_art_and_title(void);
+
+	bool get_artist(void);
+
+	bool get_resolution_data(void);
 
 public:
 

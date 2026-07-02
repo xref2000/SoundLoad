@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "logs.hpp"
 #include "../config/config.hpp"
 #include "../site_api/site_api.hpp"
 
