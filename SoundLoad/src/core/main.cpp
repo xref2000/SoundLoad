@@ -14,9 +14,9 @@ static void fix_path(std::wstring& path)
 
 static bool save_config(cfg_format& cfg_data_raw)
 {
-	if (cfg::f.save_config || cfg::f.save_cid)
+	if (cfg::f.save_cfg || cfg::f.save_cid)
 	{
-		if (cfg::f.save_config)
+		if (cfg::f.save_cfg)
 		{
 			cfg::save_config(cfg_data_raw);
 		}
@@ -78,7 +78,7 @@ static bool read_config(cfg_format& cfg_data_raw)
 	}
 	else
 	{
-		cfg::f.config_just_created = true;
+		cfg::f.fresh_cfg = true;
 	}
 
 	return true;
@@ -105,7 +105,7 @@ static bool init_program(int argc, wchar_t* argv[], cfg_format& raw_cfg)
 		return false;
 	}
 
-	if (cfg::f.add_to_path || cfg::f.config_just_created)
+	if (cfg::f.add_to_path || cfg::f.fresh_cfg)
 	{
 		cfg::path_cache[old_size] = L'\0';
 		cfg::add_to_path(); // failure is ignored as its non-vital to primary functionality
@@ -130,12 +130,12 @@ int wmain(int argc, wchar_t* argv[])
 	cfg_format raw_cfg = {};
 	if (!init_program(argc, argv, raw_cfg))
 	{
-		system("pause"); // half the world would give up when double clicking does nothing
+		std::getchar(); // half the world would give up when double clicking does nothing
 		return 1;
 	}
 
-	fix_path(cfg::audio_out_dir);
-	fix_path(cfg::image_out_dir);
+	fix_path(cfg::audio_dir);
+	fix_path(cfg::image_dir);
 
 	sc_upload post(argv[1]);
 	if (post.f.error_occured || !post.download())

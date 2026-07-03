@@ -116,6 +116,8 @@ auto add_comment = [this, &post_data, &temp](PCWSTR label, PCSTR value)
 			// Appends the desired metadata value to the label. This results in 
 			// something like "Original title: example song title"
 			this->description += label + temp;
+			
+			temp.clear();
 		}
 	};
 

@@ -7,6 +7,11 @@
 //// HELPER FUNCTIONS
 //
 
+template <typename t> static cpr::Response cpr_get_timed(const t& url)
+{
+	return cpr::Get(cpr::Url{ url }, cpr::Timeout{ 4500 });
+}
+
 bool get_client_id(void)
 {
 	auto handle_parsing_err = [](void)
@@ -23,7 +28,7 @@ bool get_client_id(void)
 			}
 		};
 
-	cpr::Response r = cpr::Get(cpr::Url{ "https://soundcloud.com/" });
+	const cpr::Response r = cpr_get_timed("https://soundcloud.com/");
 	if (r.status_code != 200)
 	{
 		err::log_net(r);
@@ -107,7 +112,7 @@ static bool read_cover_file(TagLib::File& target_file, TagLib::ByteVector& buffe
 
 static bool request_failed(cpr::Response& r)
 {
-	// This function will return true is the request succeeded. Otherwise it will attempt 
+	// This function will return false is the request succeeded. Otherwise it will attempt 
 	// to get a fresh CID and retry the request with it. For that reason, this function 
 	// should only be used on requests that included a CID.
 
@@ -135,7 +140,7 @@ static bool request_failed(cpr::Response& r)
 	const_cast<std::string&>(url.str()).erase((pos + _countof(cid_str)) - 1);
 	url += cfg::client_id;
 
-	r = cpr::Get(url);
+	r = cpr::Get(url, cpr::Timeout{ 4500 });
 	if (r.status_code != 200)
 	{
 		err::log_net(r);
@@ -149,15 +154,15 @@ static bool resolve_post(std::wstring& url, Json& buffer)
 {
 	// Erasing tracking data from link
 
-	if (url.find(L'?') != std::string::npos)
-		url.erase(url.find_first_of(L'?'));
+	const size_t pos = url.find(L'?');
+	if (pos != std::string::npos) url.erase(pos);
 	
 	// Resolving post
 
 	std::string mb_url;
 	wide_to_mb(url, mb_url);
 
-	cpr::Response r = cpr::Get(cpr::Url{ "https://api-v2.soundcloud.com/resolve?url=" + mb_url + "&client_id=" + cfg::client_id });
+	cpr::Response r = cpr_get_timed("https://api-v2.soundcloud.com/resolve?url=" + mb_url + "&client_id=" + cfg::client_id);
 	if (request_failed(r)) return false;
 
 	buffer = Json::parse(r.text);
@@ -172,7 +177,7 @@ bool sc_upload::get_cover_art(cpr::Response& buffer) const
 {
 	std::string url;
 
-	if (cfg::f.cover_src_is_sc_link)
+	if (cfg::f.cover_src_sc_link)
 	{
 		Json post_data;
 		if (!resolve_post(cfg::image_src, post_data))
@@ -193,8 +198,25 @@ bool sc_upload::get_cover_art(cpr::Response& buffer) const
 		wide_to_mb(this->art_src, url);
 	}
 
-	buffer = cpr::Get(cpr::Url{ url });
-	return !(cfg::f.cover_src_is_sc_link && request_failed(buffer)) && buffer.status_code == 200;
+	buffer = cpr_get_timed(url);
+	if (cfg::f.cover_src_sc_link && request_failed(buffer))
+	{
+		return false;
+	}
+
+	if (buffer.status_code != 200)
+	{
+		err::log_net(buffer);
+		return false;
+	}
+
+	if (buffer.text.size() > ~0U) // art size fields for id3v2/mp4 tags are 32-bits
+	{
+		err::warn("Cover art is larger than the max of ~4.29gb. This is likely unintended, please verify cover source.");
+		return false;
+	}
+
+	return true;
 }
 
 void sc_upload::store_basic_tag_data(TagLib::Tag* tag) const
@@ -223,10 +245,9 @@ void sc_upload::add_m4a_tag(const std::wstring& path) const
 
 	// Getting cover art
 
-	TagLib::MP4::CoverArtList cover_list;
 	TagLib::ByteVector raw_image;
 
-	if (cfg::f.cover_src_is_path)
+	if (cfg::f.cover_src_path)
 	{
 		if (!read_cover_file(file, raw_image))
 		{
@@ -245,9 +266,14 @@ void sc_upload::add_m4a_tag(const std::wstring& path) const
 		raw_image = { r.text.data(), static_cast<UINT>(r.text.size()) };
 	}
 
+	TagLib::MP4::CoverArtList cover_list;
 	cover_list.append({ TagLib::MP4::CoverArt::PNG, raw_image });
 	tag->setItem("covr", TagLib::MP4::Item(cover_list));
-	file.save();
+
+	if (!file.save())
+	{
+		err::warn("failed to save MP4 tag");
+	}
 }
 
 void sc_upload::add_mp3_tag(const std::wstring& path) const
@@ -261,14 +287,12 @@ void sc_upload::add_mp3_tag(const std::wstring& path) const
 
 	// Setting cover art
 
-	auto cover = new TagLib::ID3v2::AttachedPictureFrame; // must be allocated on heap since taglib takes ownership
 	TagLib::ByteVector raw_image;
 
-	if (cfg::f.cover_src_is_path)
+	if (cfg::f.cover_src_path)
 	{
 		if (!read_cover_file(file, raw_image))
 		{
-			delete cover;
 			return;
 		}
 	}
@@ -278,21 +302,25 @@ void sc_upload::add_mp3_tag(const std::wstring& path) const
 		if (!this->get_cover_art(r))
 		{
 			file.save();
-			delete cover;
 			return;
 		}
 
 		raw_image = { r.text.data(), static_cast<UINT>(r.text.size()) };
 	}
 	
+	auto cover = new TagLib::ID3v2::AttachedPictureFrame; // not using std::make_unique because taglib takes ownership of the object
 	cover->setPicture(raw_image);
 	tag->addFrame(cover);
-	file.save();
+
+	if (!file.save())
+	{
+		err::warn("failed to save ID3v2 tag");
+	}
 }
 
-bool sc_upload::get_track_ids(const Json& data)
+bool sc_upload::get_track_ids(void)
 {
-	const auto tracks = data.value("tracks", Json{});
+	const auto tracks = this->post_data.value("tracks", Json{});
 	if (tracks.empty())
 	{
 		err::log("failed to parse track ID's");
@@ -301,40 +329,23 @@ bool sc_upload::get_track_ids(const Json& data)
 
 	for (size_t i = tracks.size() - 1; i; --i)
 	{
-		track_ids.push_back(tracks[i].value("id", 0));
+		this->track_ids.push_back(tracks[i].value("id", 0));
 	}
 
 	return true;
 }
 
-void sc_upload::get_hls_part(const std::string url, std::vector<std::pair<int, std::string>>& parts, int list_idx)
-{
-	cpr::Response r = cpr::Get(cpr::Url{ url });
-	if (request_failed(r))
-	{
-		this->f.error_occured = true;
-		--this->active_threads;
-		return;
-	}
-	
-	const std::lock_guard<std::mutex> lock(this->hls_mutex);
-	parts.emplace_back(list_idx, std::move(r.text));
-	--this->active_threads;
-}
-
-bool sc_upload::parse_manifest(const std::string& raw_data, std::vector<std::pair<int, std::string>>& buffer)
+bool sc_upload::parse_manifest(const std::string& raw_data, std::vector<std::shared_future<cpr::Response>>& buffer)
 {
 	// This is used to download .m3u/.m3u8 files. Both file types are similar, 
 	// with each containing an array of links that lead to file segments, which 
 	// you must append to eachother in the order of which the links are provided.
-	// Any HLS media transcoding will provide this type of file, and each link will 
-	// expire relatively quick, so you must programatically download them in the 
-	// case of SoundCloud.
+	// All HLS transcodings I've seen lead to these, which is why we want progressive.
 
 	std::istringstream iss(raw_data);
 	std::string line;
 
-	for (int i = 0; std::getline(iss, line); ++i)
+	for (uint8_t active_threads = 0; std::getline(iss, line);)
 	{
 		if (this->f.is_m4a_media && line.starts_with("#EXT-X-MAP:URI="))
 		{
@@ -347,40 +358,90 @@ bool sc_upload::parse_manifest(const std::string& raw_data, std::vector<std::pai
 		}
 		else continue;
 
-		++this->active_threads;
-		std::thread(&sc_upload::get_hls_part, this, line, std::ref(buffer), i).detach();
-	}
+		// We don't want more than 20 threads running concurrently
 
-	// Give threads 10 seconds to return
-
-	for (short i = 0; this->active_threads && i < 2000; ++i)
-	{
-		Sleep(5);
-	}
-
-	if (this->active_threads)
-	{
-		err::log("threads timed out, aborting download");
-		return false;
-	}
-
-	if (this->f.error_occured)
-	{
-		return false;
-	}
-
-	std::sort(buffer.begin(), buffer.end(),
-		[](const std::pair<int, std::string>& a, const std::pair<int, std::string>& b)
+		if (active_threads >= 20)
 		{
-			return a.first < b.first;
-		});
+			// Check for completed threads
+
+			for (auto& future : buffer)
+			{
+				if (future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+				{
+					--active_threads;
+				}
+			}
+
+			// If no threads have completed, wait on the first for 4500ms. If timed out, download fails.
+
+			if (active_threads >= 20 && buffer[0].wait_for(std::chrono::milliseconds(4500)) != std::future_status::ready)
+			{
+				err::log("Base thread timed out with thread limit reached. Please open an issue on the repository and provide the track link (use the \"-?\" arg for link).");
+				return false;
+			}
+		}
+
+		buffer.emplace_back(cpr::GetAsync(cpr::Url{ line }, cpr::Timeout{ 4500 }).share());
+		++active_threads;
+	}
+
+	iss.clear();
+	line.clear();
+
+	// Give threads 5 seconds to return, sleep for 50ms between checks. 500ms 
+	// higher than the 4500ms timeout that requests are given to account for 
+	// potentially slow thread scheduling.
+
+	bool active_thread = false;
+
+	for (uint8_t i = 0; i < 100; std::this_thread::sleep_for(std::chrono::milliseconds(50)), ++i, active_thread = false)
+	{
+		for (auto& future : buffer)
+		{
+			const bool thread_waiting = future.wait_for(std::chrono::seconds(0)) != std::future_status::ready;
+
+			if (!thread_waiting)
+			{
+				if (!future.valid())
+				{
+					throw std::future_error(std::future_errc::no_state);
+				}
+
+				const cpr::Response& r = future.get();
+
+				if (r.status_code != 200)
+				{
+					err::log("request failed (code = {}, url = {})", r.status_code, r.url.c_str());
+					return false;
+				}
+			}
+			else 
+			{
+				active_thread = true;
+			}
+		}
+
+		if (!active_thread) break;
+	}
+
+	if (active_thread)
+	{
+		err::log("threads timed out while attempting asynchronous HLS downloads (4500ms max), aborting download");
+		return false;
+	}
 
 	return true;
 }
 
-bool sc_upload::get_streaming_url(const Json& json)
+bool sc_upload::get_streaming_url(void)
 {
-	auto list = json.value("media", Json{});
+	// We prefer progressive transcodings over HLS because progressive transcodings only require 
+	// one request to download the entire track, but HLS requires 10+ requests and forces you to 
+	// parse a manifest to get each link. Multi-threading significantly improves this process, but 
+	// even if it took the exact same amount of time as progressive downloads, we will want to 
+	// minimize requests to reduce the chances of rate limiting.
+
+	auto list = this->post_data.value("media", Json{});
 	if (list.empty())
 	{
 		err::log("'media' property not found in metadata");
@@ -394,35 +455,31 @@ bool sc_upload::get_streaming_url(const Json& json)
 		return false;
 	}
 
-	bool found = false, is_hls = false, progressive_found = false;
+	bool found = false, progressive_found = false;
 
 	for (const auto& transcoding : list)
 	{
-		// AAC transcodings are lossless, and provide .m4a files rather than .mp3.
-		// Unfortunately, Spotify can't play these files. 
+		// AAC transcodings are highest quality, and provide .m4a files rather than .mp3.
+		// You can't play these files Spotify or Apple Music so don't use for local files.
 
 		if (transcoding["preset"] != "aac_160k")
 		{
-			if (!progressive_found)
+			const auto format = transcoding["format"];
+			const auto protocol = format["protocol"];
+
+			if (protocol == "progressive" || format["mime_type"] == "audio/mpeg")
 			{
-				const auto format = transcoding["format"];
-				const bool hls = format["protocol"] == "hls";
+				this->streaming_url = transcoding["url"].get<std::string>() + "?client_id=" + cfg::client_id;
+				found = true;
 
-				if (format["protocol"] == "progressive" || format["mime_type"] == "audio/mpeg")
+				if (protocol != "hls")
 				{
-					is_hls = hls;
-
-					if (!hls)
-					{
-						progressive_found = true;
-					}
-
-					this->streaming_url = transcoding["url"].get<std::string>() + "?client_id=" + cfg::client_id;
-					found = true;
+					progressive_found = true;
+					break;
 				}
 			}
 		}
-		else if (cfg::f.get_aac_transcoding)
+		else if (cfg::f.use_aac)
 		{
 			this->streaming_url  = transcoding["url"].get<std::string>() + "?client_id=" + cfg::client_id;
 			this->f.is_m4a_media = true;
@@ -438,11 +495,7 @@ bool sc_upload::get_streaming_url(const Json& json)
 		return false;
 	}
 
-	if (is_hls)
-	{
-		this->f.is_hls_mpeg = true;
-	}
-
+	this->f.is_hls_mpeg = !progressive_found;
 	return true;
 }
 
@@ -450,17 +503,17 @@ bool sc_upload::download_track(void)
 {
 	// Downloading track (MP3 or M4A)
 
-	cpr::Response r = cpr::Get(cpr::Url{ this->streaming_url });
+	cpr::Response r = cpr_get_timed(this->streaming_url);
 	if (request_failed(r)) return false;
 
-	r = cpr::Get(cpr::Url{ Json::parse(r.text)["url"].get<std::string>()});
-	if (request_failed(r)) return false;
+	r = cpr_get_timed(Json::parse(r.text)["url"].get<std::string>());
+	if (r.status_code != 200) return false;
 
 	this->streaming_url.clear();
 	
 	// Finalizing download
 
-	std::vector<std::pair<int, std::string>> hls_parts;
+	std::vector<std::shared_future<cpr::Response>> hls_parts;
 	const char* raw_audio  = nullptr;
 	size_t      audio_size = 0;
 	const bool  use_parts  = this->f.is_hls_mpeg || this->f.is_m4a_media;
@@ -477,7 +530,7 @@ bool sc_upload::download_track(void)
 
 	// Writing track to disk
 
-	const std::wstring path = cfg::audio_out_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + (this->f.is_m4a_media ? L".m4a" : L".mp3");
+	const std::wstring path = cfg::audio_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + (this->f.is_m4a_media ? L".m4a" : L".mp3");
 
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (file.fail())
@@ -490,9 +543,15 @@ bool sc_upload::download_track(void)
 
 	if (use_parts)
 	{
-		for (const auto& pair : hls_parts)
+		for (auto& future : hls_parts)
 		{
-			file.write(pair.second.c_str(), pair.second.size());
+			if (!future.valid())
+			{
+				throw std::future_error(std::future_errc::no_state);
+			}
+
+			const cpr::Response& r = future.get();
+			file.write(r.text.c_str(), r.text.size());
 
 			if (file.fail())
 			{
@@ -538,11 +597,11 @@ bool sc_upload::download_album(void)
 
 bool sc_upload::download_cover(void) const
 {
-	cpr::Response r = cpr::Get(cpr::Url{ this->artwork_url });
+	cpr::Response r = cpr_get_timed(this->artwork_url);
 	if (r.status_code != 200) return false;
 
-	const std::wstring& file_name = cfg::g_data.image_file_name.empty() ? this->title : cfg::g_data.image_file_name;
-	const std::wstring path = cfg::image_out_dir + std::regex_replace(file_name, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".jpg";
+	const std::wstring& file_name = cfg::g_data.image_name.empty() ? this->title : cfg::g_data.image_name;
+	const std::wstring path = cfg::image_dir + std::regex_replace(file_name, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".jpg";
 
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (file.fail())
@@ -576,13 +635,28 @@ void sc_upload::get_misc_metadata(void)
 
 	// Getting year
 
-	if (cfg::g_data.year)
+	if (cfg::g_data.year.empty())
 	{
-		this->year = cfg::g_data.year;
+		try
+		{
+			this->year = std::stoul(post_data["created_at"].get<std::string>());
+		}
+		catch (...)
+		{
+			err::warn("failed to get upload year");
+		}
 	}
 	else
 	{
-		this->year = std::stoul(post_data["created_at"].get<std::string>());
+		try 
+		{ 
+			this->year = std::stoul(cfg::g_data.year); 
+		}
+		catch (...) 
+		{
+			err::log("invalid year provided");
+			throw;
+		}
 	}
 }
 
@@ -608,6 +682,8 @@ void sc_upload::create_comments(void)
 				}
 
 				this->description += label + temp;
+
+				temp.clear();
 			}
 		};
 
@@ -623,9 +699,12 @@ void sc_upload::get_album(void)
 
 	if (cfg::g_data.album.empty())
 	{
-		const cpr::Response r = cpr::Get(cpr::Url{ "https://api-v2.soundcloud.com/tracks/" + std::to_string(post_data["id"].get<int>()) + "/albums?client_id=" + cfg::client_id });
-
-		if (r.status_code == 200)
+		cpr::Response r = cpr_get_timed("https://api-v2.soundcloud.com/tracks/" + std::to_string(post_data["id"].get<int>()) + "/albums?client_id=" + cfg::client_id);
+		if (request_failed(r))
+		{
+			std::cout << "ignoring failure, continuing download\n";
+		}
+		else
 		{
 			const Json album_data = Json::parse(r.text)["collection"];
 
@@ -708,7 +787,7 @@ bool sc_upload::get_resolution_data(void)
 {
 	// Getting upload type, track ID(s), and streaming url (if applicable)
 
-	const std::string kind = post_data.value("kind");
+	const std::string kind = this->post_data.value("kind");
 	if (kind.empty())
 	{
 		err::log("failed to get 'kind' field from metadata");
@@ -718,10 +797,10 @@ bool sc_upload::get_resolution_data(void)
 
 	if (kind[0] == 't')
 	{
-		this->id = post_data.value("id", 0);
+		this->id = this->post_data.value("id", 0);
 		this->f.is_track = true;
 
-		if (!get_streaming_url(post_data))
+		if (!this->get_streaming_url())
 		{
 			this->f.error_occured = true;
 		}
@@ -730,7 +809,7 @@ bool sc_upload::get_resolution_data(void)
 	{
 		this->f.is_album = true;
 
-		if (!get_track_ids(post_data))
+		if (!this->get_track_ids())
 		{
 			this->f.error_occured = true;
 		}

@@ -10,9 +10,6 @@ private:
 
 	Json post_data;
 
-	std::mutex hls_mutex;
-	std::atomic<int> active_threads = 0;
-
 	std::string      streaming_url;
 	std::vector<int> track_ids;
 
@@ -40,13 +37,11 @@ private:
 
 	bool download_cover(void) const;
 
-	void get_hls_part(const std::string url, std::vector<std::pair<int, std::string>>& parts, int list_idx);
+	bool parse_manifest(const std::string& raw_data, std::vector<std::shared_future<cpr::Response>>& buffer);
 
-	bool parse_manifest(const std::string& raw_data, std::vector<std::pair<int, std::string>>& buffer);
+	bool get_streaming_url(void);
 
-	bool get_streaming_url(const Json& data);
-
-	bool get_track_ids(const Json& data);
+	bool get_track_ids(void);
 
 	bool get_cover_art(cpr::Response& buffer) const;
 
@@ -93,20 +88,20 @@ public:
 
 	bool download(void)
 	{
-		if (cfg::f.download_art_seperate)
+		if (cfg::f.seperate_art)
 		{
 			if (!this->download_cover())
 			{
 				return false;
 			}
 
-			if (cfg::f.disable_audio_download)
+			if (cfg::f.no_audio_download)
 			{
 				std::cout << "WARNING: only downloaded cover art\n";
 			}
 		}
 
-		if (cfg::f.disable_audio_download)
+		if (cfg::f.no_audio_download)
 		{
 			return true;
 		}

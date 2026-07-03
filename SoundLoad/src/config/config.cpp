@@ -89,14 +89,14 @@ namespace cfg
 			switch (arg_hash)
 			{
 			case hash(L"s"):       { [[fallthrough]];                             }
-			case hash(L"save"):    { cfg::f.save_config            = true; break; }
-			case hash(L"art"):     { cfg::f.download_art_seperate  = true; break; }
-			case hash(L"n-art"):   { cfg::f.disable_art_download   = true; break; }
-			case hash(L"audio"):   { cfg::f.download_audio         = true; break; }
-			case hash(L"n-audio"): { cfg::f.disable_audio_download = true; break; }
-			case hash(L"pvars"):   { cfg::f.add_to_path            = true; break; }
-			case hash(L"aac"):     { cfg::f.get_aac_transcoding    = true; break; }
-			case hash(L"n-aac"):   { cfg::f.no_aac_transcodings    = true; break; }
+			case hash(L"save"):    { cfg::f.save_cfg          = true; break; }
+			case hash(L"art"):     { cfg::f.seperate_art      = true; break; }
+			case hash(L"n-art"):   { cfg::f.no_seperate_art   = true; break; }
+			case hash(L"audio"):   { cfg::f.download_audio    = true; break; }
+			case hash(L"n-audio"): { cfg::f.no_audio_download = true; break; }
+			case hash(L"pvars"):   { cfg::f.add_to_path       = true; break; }
+			case hash(L"aac"):     { cfg::f.use_aac           = true; break; }
+			case hash(L"n-aac"):   { cfg::f.no_aac            = true; break; }
 
 			default: handled = false;
 			}
@@ -118,31 +118,24 @@ namespace cfg
 					return false;
 				}
 
-				bool stoul_failed = false;
-				auto handle_stoul = [&stoul_failed, &next_arg](UINT& buffer)
-					{
-						try { buffer = std::stoul(next_arg); }
-						catch (...) { stoul_failed = true; }
-					};
-
 				switch (arg_hash)
 				{
 					// Config data arguments
 
 				case hash(L"iname"): [[fallthrough]];
-				case hash(L"img-name"):   { cfg::g_data.image_file_name = next_arg; break; }
+				case hash(L"img-name"):   { cfg::g_data.image_name = next_arg; break; }
 
 				case hash(L"aname"): [[fallthrough]];
-				case hash(L"audio-name"): { cfg::g_data.audio_file_name = next_arg; break; }
+				case hash(L"audio-name"): { cfg::g_data.audio_name = next_arg; break; }
 
 				case hash(L"idst"):  [[fallthrough]];
-				case hash(L"img-dst"):    { cfg::image_out_dir          = next_arg; break; }
+				case hash(L"img-dst"):    { cfg::image_dir         = next_arg; break; }
 
 				case hash(L"adst"):  [[fallthrough]];
-				case hash(L"audio-dst"):  { cfg::audio_out_dir          = next_arg; break; }
+				case hash(L"audio-dst"):  { cfg::audio_dir         = next_arg; break; }
 
 				case hash(L"isrc"):  [[fallthrough]];
-				case hash(L"img-src"):    { cfg::image_src              = next_arg; break; }
+				case hash(L"img-src"):    { cfg::image_src         = next_arg; break; }
 
 					// Audio tag arguments
 
@@ -165,10 +158,10 @@ namespace cfg
 				case hash(L"genre"):    { cfg::g_data.genre           = next_arg; break; }
 
 				case hash(L"n"):  [[fallthrough]];
-				case hash(L"num"):      { handle_stoul(cfg::g_data.number); break; }
+				case hash(L"num"):      { cfg::g_data.number          = next_arg; break; }
 
 				case hash(L"y"):  [[fallthrough]];
-				case hash(L"year"):     { handle_stoul(cfg::g_data.year);   break; }
+				case hash(L"year"):     { cfg::g_data.year            = next_arg;   break; }
 
 					// Extra
 
@@ -187,12 +180,6 @@ namespace cfg
 					return false;
 				}
 				}
-
-				if (stoul_failed)
-				{
-					log_bad_arg();
-					return false;
-				}
 			}
 		}
 
@@ -202,11 +189,11 @@ namespace cfg
 		{
 			if (std::filesystem::exists(cfg::image_src))
 			{
-				cfg::f.cover_src_is_path = true;
+				cfg::f.cover_src_path = true;
 			}
 			else if (cfg::image_src.starts_with(L"https://soundcloud.com/"))
 			{
-				cfg::f.cover_src_is_sc_link = true;
+				cfg::f.cover_src_sc_link = true;
 			}
 		}
 
@@ -236,29 +223,29 @@ namespace cfg
 			cfg::client_id = data.cid;
 		}
 
-		if (!data.art_out_dir.empty() && cfg::image_out_dir.empty())
+		if (!data.art_out_dir.empty() && cfg::image_dir.empty())
 		{
-			cfg::image_out_dir = data.art_out_dir;
+			cfg::image_dir = data.art_out_dir;
 		}
 
-		if (!data.track_out_dir.empty() && cfg::audio_out_dir.empty())
+		if (!data.track_out_dir.empty() && cfg::audio_dir.empty())
 		{
-			cfg::audio_out_dir = data.track_out_dir;
+			cfg::audio_dir = data.track_out_dir;
 		}
 
 		if (!cfg::audio_flags_set() && !data.get_track_audio)
 		{
-			cfg::f.disable_audio_download = true;
+			cfg::f.no_audio_download = true;
 		}
 
 		if (!cfg::art_flags_set() && data.get_track_art)
 		{
-			cfg::f.download_art_seperate = true;
+			cfg::f.seperate_art = true;
 		}
 
 		if (!cfg::aac_flags_set() && data.get_aac_transcoding)
 		{
-			cfg::f.get_aac_transcoding = true;
+			cfg::f.use_aac = true;
 		}
 	}
 
@@ -269,14 +256,14 @@ namespace cfg
 			data.cid = cfg::client_id;
 		}
 
-		if (!cfg::image_out_dir.empty())
+		if (!cfg::image_dir.empty())
 		{
-			data.art_out_dir = cfg::image_out_dir;
+			data.art_out_dir = cfg::image_dir;
 		}
 
-		if (!cfg::audio_out_dir.empty())
+		if (!cfg::audio_dir.empty())
 		{
-			data.track_out_dir = cfg::audio_out_dir;
+			data.track_out_dir = cfg::audio_dir;
 		}
 
 		if (cfg::audio_flags_set())
@@ -286,12 +273,12 @@ namespace cfg
 
 		if (cfg::art_flags_set())
 		{
-			data.get_track_art = cfg::f.download_art_seperate;
+			data.get_track_art = cfg::f.seperate_art;
 		}
 
 		if (cfg::aac_flags_set())
 		{
-			data.get_aac_transcoding = cfg::f.get_aac_transcoding;
+			data.get_aac_transcoding = cfg::f.use_aac;
 		}
 	}
 
