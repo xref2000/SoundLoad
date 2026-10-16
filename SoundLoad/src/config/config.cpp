@@ -1,6 +1,7 @@
 #include "pch.hpp"
 #include "logs.hpp"
 #include "config.hpp"
+#include "utils/utils.hpp"
 
 namespace cfg
 {
@@ -10,38 +11,36 @@ namespace cfg
 
 	static void show_usage(void)
 	{
-		std::cout << "[*] ABOUT THIS PROGRAM\n";
-		std::cout << "All valid arguments are listed below. You MUST surround any arguments with cmd operators (e.g. < | & ?) or spaces in quotes. THIS INCLUDES LINKS WITH '?' IN THEM!\n";
-		std::cout << "Some features provide short and long versions of the same argument. The short version is in parenthesis at the start of the line, if it exists.\n";
-		std::cout << "For detailed usage instructions: https://github.com/xref2000/SoundLoad\n";
+		std::println("[*] ABOUT THIS PROGRAM");
+		std::println("All valid arguments are listed below. You MUST surround any arguments with cmd operators (e.g. < | & ?) or spaces in quotes. THIS INCLUDES LINKS WITH '?' IN THEM!");
+		std::println("Some features provide short and long versions of the same argument. The short version is in parenthesis at the start of the line, if it exists.");
+		std::println("For detailed usage instructions: https://github.com/xref2000/SoundLoad");
 
-		std::cout << "\n[+] GENERAL CONFIGURATION\n";
-		std::cout << "-audio     ; [SAVEABLE, DEFAULT] enables the download of audio files\n";
-		std::cout << "-n-audio   ; [SAVEABLE] disables the download of audio files\n";
-		std::cout << "-art       ; [SAVEABLE] enables cover art downloads\n";
-		std::cout << "-n-art     ; [SAVEABLE, DEFAULT] disables cover art downloads\n";
-		std::cout << "-aac       ; [SAVEABLE] enables AAC audio download (apple music and spotify wont play these files)\n";
-		std::cout << "-n-aac     ; [SAVEABLE, DEFAULT] disables AAC audio download (highest bitrate MPEG used)\n";
-		std::cout << "-pvars     ; adds the program to PATH variables\n";
-		std::cout << "-cid <cid> ; [SAVEABLE] sets the client ID (use only if you know what you're doing)\n";
-		std::cout << "(-s) -save ; saves applicable arguments to cfg.json\n";
+		std::println("\n[+] GENERAL CONFIGURATION");
+		std::println("-audio     ; [SAVEABLE, DEFAULT] enables the download of audio files");
+		std::println("-n-audio   ; [SAVEABLE] disables the download of audio files");
+		std::println("-art       ; [SAVEABLE] enables cover art downloads");
+		std::println("-n-art     ; [SAVEABLE, DEFAULT] disables cover art downloads");
+		std::println("-pvars     ; adds the program to PATH variables");
+		std::println("-cid <cid> ; [SAVEABLE] sets the client ID (use only if you know what you're doing)");
+		std::println("(-s) -save ; saves applicable arguments to cfg.json");
 
-		std::cout << "\n[+] FILE INFO\n";
-		std::cout << "(-adst)  -audio-dst <dir>   ; [SAVEABLE] sets the download directory for audio files\n";
-		std::cout << "(-idst)  -img-dst <dir>     ; [SAVEABLE] sets the download directory for images\n";
-		std::cout << "(-aname) -audio-name <name> ; the name to be given to the downloaded audio file\n";
-		std::cout << "(-iname) -img-name <name>   ; the name to be given to the downloaded cover art\n";
-		std::cout << "(-isrc)  -img-src <source>  ; the cover art that will be added to the audio (soundcloud track link, image link, or image path)\n";
-		
-		std::cout << "\n[+] METADATA\n";
-		std::cout << "(-t)  -title <title       ; title property of audio tag (also used for the file name if one is not specified)\n";
-		std::cout << "(-c)  -comment <comment>  ; comment property of the audio tag (automatically adds the upload date, upload description, and tags)\n";
-		std::cout << "(-a)  -artists <artists>  ; contributing artists property of audio tag (defaults to artist metadata or uploader)\n";
-		std::cout << "(-aa) -a-artist <artist>  ; album artist property of audio tag (defaults to album uploader if in an album)\n";
-		std::cout << "(-al) -album <album>      ; album property of audio tag (defaults to track name or, if track is in an album, the album name)\n";
-		std::cout << "(-g)  -genre <genre>      ; genre property of audio tag (defaults to parsed genre from track)\n";
-		std::cout << "(-n)  -num <track number> ; track number property of audio tag (defaults to track number in album if track is in an album)\n";
-		std::cout << "(-y)  -year <year>        ; year property of audio tag (defaults to year of upload date)\n";
+		std::println("\n[+] FILE INFO");
+		std::println("(-adst)  -audio-dst <dir>   ; [SAVEABLE] sets the download directory for audio files");
+		std::println("(-idst)  -img-dst <dir>     ; [SAVEABLE] sets the download directory for images");
+		std::println("(-aname) -audio-name <name> ; the name to be given to the downloaded audio file");
+		std::println("(-iname) -img-name <name>   ; the name to be given to the downloaded cover art");
+		std::println("(-isrc)  -img-src <source>  ; the cover art that will be added to the audio (soundcloud track link, image link, or image path)");
+
+		std::println("\n[+] METADATA");
+		std::println("(-t)  -title <title       ; title property of audio tag (also used for the file name if one is not specified)");
+		std::println("(-c)  -comment <comment>  ; comment property of the audio tag (automatically adds the upload date, upload description, and tags)");
+		std::println("(-a)  -artists <artists>  ; contributing artists property of audio tag (defaults to artist metadata or uploader)");
+		std::println("(-aa) -a-artist <artist>  ; album artist property of audio tag (defaults to album uploader if in an album)");
+		std::println("(-al) -album <album>      ; album property of audio tag (defaults to track name or, if track is in an album, the album name)");
+		std::println("(-g)  -genre <genre>      ; genre property of audio tag (defaults to parsed genre from track)");
+		std::println("(-n)  -num <track number> ; track number property of audio tag (defaults to track number in album if track is in an album)");
+		std::println("(-y)  -year <year>        ; year property of audio tag (defaults to year of upload date)");
 	}
 
 	bool parse_arguments(int argc, wchar_t* argv[])
@@ -71,7 +70,7 @@ namespace cfg
 
 		for (int i = 1 + ((cfg::f.no_link_provided) == false); i < argc; ++i)
 		{
-			PCWSTR arg = argv[i];
+			const wchar_t* arg = argv[i];
 			auto log_bad_arg = [&arg](void) 
 				{ 
 					err::log(L"invalid argument \"{}\"", arg); 
@@ -83,20 +82,18 @@ namespace cfg
 				return false;
 			}
 
-			const size_t arg_hash = hash_rt(&arg[1]);
+			const size_t arg_hash = HASH_RT(&arg[1]);
 			bool handled = true;
 
 			switch (arg_hash)
 			{
-			case hash(L"s"):       { [[fallthrough]];                             }
-			case hash(L"save"):    { cfg::f.save_cfg          = true; break; }
-			case hash(L"art"):     { cfg::f.seperate_art      = true; break; }
-			case hash(L"n-art"):   { cfg::f.no_seperate_art   = true; break; }
-			case hash(L"audio"):   { cfg::f.download_audio    = true; break; }
-			case hash(L"n-audio"): { cfg::f.no_audio_download = true; break; }
-			case hash(L"pvars"):   { cfg::f.add_to_path       = true; break; }
-			case hash(L"aac"):     { cfg::f.use_aac           = true; break; }
-			case hash(L"n-aac"):   { cfg::f.no_aac            = true; break; }
+			case HASH(L"s"):       { [[fallthrough]];                        }
+			case HASH(L"save"):    { cfg::f.save_cfg          = true; break; }
+			case HASH(L"art"):     { cfg::f.seperate_art      = true; break; }
+			case HASH(L"n-art"):   { cfg::f.no_seperate_art   = true; break; }
+			case HASH(L"audio"):   { cfg::f.download_audio    = true; break; }
+			case HASH(L"n-audio"): { cfg::f.no_audio_download = true; break; }
+			case HASH(L"pvars"):   { cfg::f.add_to_path       = true; break; }
 
 			default: handled = false;
 			}
@@ -111,7 +108,7 @@ namespace cfg
 					return false; 
 				}
 
-				PCWSTR next_arg = argv[i];
+				const wchar_t* next_arg = argv[i];
 				if (!next_arg)
 				{
 					err::log("argv/argc mismatch occured, retry or recompile the program");
@@ -122,50 +119,50 @@ namespace cfg
 				{
 					// Config data arguments
 
-				case hash(L"iname"): [[fallthrough]];
-				case hash(L"img-name"):   { cfg::g_data.image_name = next_arg; break; }
+				case HASH(L"iname"): [[fallthrough]];
+				case HASH(L"img-name"):   { cfg::g_data.image_name = next_arg; break; }
 
-				case hash(L"aname"): [[fallthrough]];
-				case hash(L"audio-name"): { cfg::g_data.audio_name = next_arg; break; }
+				case HASH(L"aname"): [[fallthrough]];
+				case HASH(L"audio-name"): { cfg::g_data.audio_name = next_arg; break; }
 
-				case hash(L"idst"):  [[fallthrough]];
-				case hash(L"img-dst"):    { cfg::image_dir         = next_arg; break; }
+				case HASH(L"idst"):  [[fallthrough]];
+				case HASH(L"img-dst"):    { cfg::image_dir         = next_arg; break; }
 
-				case hash(L"adst"):  [[fallthrough]];
-				case hash(L"audio-dst"):  { cfg::audio_dir         = next_arg; break; }
+				case HASH(L"adst"):  [[fallthrough]];
+				case HASH(L"audio-dst"):  { cfg::audio_dir         = next_arg; break; }
 
-				case hash(L"isrc"):  [[fallthrough]];
-				case hash(L"img-src"):    { cfg::image_src         = next_arg; break; }
+				case HASH(L"isrc"):  [[fallthrough]];
+				case HASH(L"img-src"):    { cfg::image_src         = next_arg; break; }
 
 					// Audio tag arguments
 
-				case hash(L"t"):  [[fallthrough]];
-				case hash(L"title"):    { cfg::g_data.title           = next_arg; break; }
+				case HASH(L"t"):  [[fallthrough]];
+				case HASH(L"title"):    { cfg::g_data.title           = next_arg; break; }
 
-				case hash(L"c"):  [[fallthrough]];
-				case hash(L"comment"):  { cfg::g_data.comments        = next_arg; break; }
+				case HASH(L"c"):  [[fallthrough]];
+				case HASH(L"comment"):  { cfg::g_data.comments        = next_arg; break; }
 
-				case hash(L"a"):  [[fallthrough]];
-				case hash(L"artists"):  { cfg::g_data.contrib_artists = next_arg; break; }
+				case HASH(L"a"):  [[fallthrough]];
+				case HASH(L"artists"):  { cfg::g_data.contrib_artists = next_arg; break; }
 
-				case hash(L"aa"): [[fallthrough]];
-				case hash(L"a-artist"): { cfg::g_data.album_artists   = next_arg; break; }
+				case HASH(L"aa"): [[fallthrough]];
+				case HASH(L"a-artist"): { cfg::g_data.album_artists   = next_arg; break; }
 
-				case hash(L"al"): [[fallthrough]];
-				case hash(L"album"):    { cfg::g_data.album           = next_arg; break; }
+				case HASH(L"al"): [[fallthrough]];
+				case HASH(L"album"):    { cfg::g_data.album           = next_arg; break; }
 
-				case hash(L"g"):  [[fallthrough]];
-				case hash(L"genre"):    { cfg::g_data.genre           = next_arg; break; }
+				case HASH(L"g"):  [[fallthrough]];
+				case HASH(L"genre"):    { cfg::g_data.genre           = next_arg; break; }
 
-				case hash(L"n"):  [[fallthrough]];
-				case hash(L"num"):      { cfg::g_data.number          = next_arg; break; }
+				case HASH(L"n"):  [[fallthrough]];
+				case HASH(L"num"):      { cfg::g_data.number          = next_arg; break; }
 
-				case hash(L"y"):  [[fallthrough]];
-				case hash(L"year"):     { cfg::g_data.year            = next_arg;   break; }
+				case HASH(L"y"):  [[fallthrough]];
+				case HASH(L"year"):     { cfg::g_data.year            = next_arg;   break; }
 
 					// Extra
 
-				case hash(L"cid"):
+				case HASH(L"cid"):
 				{
 					cfg::client_id.resize(lstrlenW(next_arg));
 					WideCharToMultiByte(CP_UTF8, 0, next_arg, -1, cfg::client_id.data(), static_cast<int>(cfg::client_id.size()), nullptr, nullptr);
@@ -199,7 +196,7 @@ namespace cfg
 
 		// Getting process directory
 
-		WCHAR program_path[MAX_PATH];
+		wchar_t program_path[MAX_PATH];
 
 		if (!GetModuleFileNameW(nullptr, program_path, MAX_PATH))
 		{
@@ -208,7 +205,6 @@ namespace cfg
 		}
 
 		cfg::path_cache = std::filesystem::path(program_path).parent_path().wstring();
-
 		return true;
 	}
 
@@ -242,11 +238,6 @@ namespace cfg
 		{
 			cfg::f.seperate_art = true;
 		}
-
-		if (!cfg::aac_flags_set() && data.get_aac_transcoding)
-		{
-			cfg::f.use_aac = true;
-		}
 	}
 
 	void save_config(cfg_format& data)
@@ -274,11 +265,6 @@ namespace cfg
 		if (cfg::art_flags_set())
 		{
 			data.get_track_art = cfg::f.seperate_art;
-		}
-
-		if (cfg::aac_flags_set())
-		{
-			data.get_aac_transcoding = cfg::f.use_aac;
 		}
 	}
 
@@ -323,8 +309,7 @@ namespace cfg
 
 		// Setting value
 
-		if (value.find(cfg::path_cache) == std::wstring::npos
-		&& (cfg::f.add_to_path || MessageBoxW(nullptr, L"Add sl.exe directory to PATH variables? If done, cmd will recognize sl.exe no matter the working directory.", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES))
+		if (value.find(cfg::path_cache) == std::wstring::npos && (cfg::f.add_to_path || MessageBoxW(nullptr, L"Add sl.exe directory to PATH variables? If done, cmd will recognize sl.exe no matter the working directory.", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES))
 		{
 			value += cfg::path_cache + L';';
 
@@ -332,7 +317,10 @@ namespace cfg
 			{
 				std::cout << "[!] Added sl.exe directory to PATH variables\n";
 			}
-			else err::warn("failed to set HKCU/Environment/Path value");
+			else 
+			{
+				err::warn("failed to set HKCU/Environment/Path value");
+			}
 		}
 
 		RegCloseKey(hkey);

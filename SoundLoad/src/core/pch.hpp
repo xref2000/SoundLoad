@@ -5,6 +5,7 @@
 #include <Windows.h>
 
 #include <iostream>
+#include <print>
 #include <fstream>
 #include <string>
 #include <filesystem>
@@ -37,19 +38,3 @@
 */
 
 using Json = nlohmann::json;
-
-// COMPILE/RUNTIME FNV1A HASHING (case-insensitive)
-
-consteval uint32_t hash(const wchar_t* input, const uint32_t val = 0x811C9DC5u) noexcept
-{
-	wchar_t ch = input[0];
-	if (ch < 91 && ch > 64) ch += 32;
-	return !ch ? val : hash(input + 1, (val ^ ch) * 0x01000193u);
-}
-
-inline constexpr uint32_t hash_rt(const wchar_t* input, const uint32_t val = 0x811C9DC5u) noexcept
-{
-	wchar_t ch = input[0];
-	if (ch < 91 && ch > 64) ch += 32;
-	return !ch ? val : hash_rt(input + 1, (val ^ ch) * 0x01000193u);
-}

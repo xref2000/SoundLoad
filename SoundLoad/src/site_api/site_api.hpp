@@ -1,5 +1,12 @@
 #pragma once
 
+enum class cover_types_t : uint8_t
+{
+	invalid,
+	jpg,
+	png,
+};
+
 struct sc_upload
 {
 private:
@@ -13,7 +20,7 @@ private:
 	std::string      streaming_url;
 	std::vector<int> track_ids;
 
-	std::wstring art_src;
+	std::wstring art_src; // user-supplied source for cover art
 	std::string  artwork_url;
 	std::string  artist_pfp_url;
 
@@ -22,10 +29,12 @@ private:
 	std::wstring album;
 	std::wstring artist;
 	std::wstring title;
-	UINT         year = 0u;
-	UINT         num  = 0u;
+	uint32_t year = 0;
+	uint32_t num  = 0;
 
 	int id = 0;
+
+	cover_types_t cover_type = cover_types_t::invalid;
 
 	//
 	//// PRIVATE METHODS
@@ -45,11 +54,7 @@ private:
 
 	bool get_cover_art(cpr::Response& buffer) const;
 
-	void store_basic_tag_data(TagLib::Tag* tag) const;
-
 	void add_m4a_tag(const std::wstring& path) const;
-
-	void add_mp3_tag(const std::wstring& path) const;
 
 	void get_misc_metadata(void);
 
@@ -57,7 +62,7 @@ private:
 
 	void get_album(void);
 
-	void get_art_and_title(void);
+	bool get_art_and_title(void);
 
 	bool get_artist(void);
 
@@ -71,13 +76,11 @@ public:
 
 	struct
 	{
-		// 5/8 bits used
+		// 3/8 bits used
 
-		UINT8 error_occured : 1; // An error occured in the constructor
-		UINT8 is_track      : 1; // Object represents a singular track
-		UINT8 is_album      : 1; // Object represents an album or playlist
-		UINT8 is_m4a_media  : 1; // Lossless media transcoding (.m3u8 -> .m4a)
-		UINT8 is_hls_mpeg   : 1; // HLS media transcoding (.m3u -> .mp3)
+		uint8_t err_occured : 1; // An error occured in the constructor
+		uint8_t is_track    : 1; // Object represents a singular track
+		uint8_t is_album    : 1; // Object represents an album or playlist
 	} f = {};
 
 	//

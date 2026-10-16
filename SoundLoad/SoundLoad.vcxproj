@@ -127,10 +127,10 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\core\;$(ProjectDir)includes\;$(ProjectDir)includes\taglib\toolkit;$(ProjectDir)includes\taglib\;$(ProjectDir)includes\taglib\mpeg\id3v2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\core\;$(ProjectDir)includes\;$(ProjectDir)includes\taglib\toolkit;$(ProjectDir)includes\taglib\;$(ProjectDir)includes\taglib\mpeg\id3v2\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -147,11 +147,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\core\;$(ProjectDir)includes\;$(ProjectDir)includes\taglib\toolkit;$(ProjectDir)includes\taglib\;$(ProjectDir)includes\taglib\mpeg\id3v2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\core\;$(ProjectDir)includes\;$(ProjectDir)includes\taglib\toolkit;$(ProjectDir)includes\taglib\;$(ProjectDir)includes\taglib\mpeg\id3v2\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -176,6 +176,7 @@
     <ClInclude Include="src\core\logs.hpp" />
     <ClInclude Include="src\core\pch.hpp" />
     <ClInclude Include="src\site_api\site_api.hpp" />
+    <ClInclude Include="src\utils\utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -42,5 +42,6 @@
     <ClInclude Include="src\core\logs.hpp">
       <Filter>src\core</Filter>
     </ClInclude>
+    <ClInclude Include="src\utils\utils.hpp" />
   </ItemGroup>
 </Project>

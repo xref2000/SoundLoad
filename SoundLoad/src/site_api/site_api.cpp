@@ -1,13 +1,15 @@
 #include "pch.hpp"
 #include "logs.hpp"
-#include "../config/config.hpp"
+#include "config/config.hpp"
 #include "site_api.hpp"
+#include "utils/utils.hpp"
 
 //
 //// HELPER FUNCTIONS
 //
 
-template <typename t> static cpr::Response cpr_get_timed(const t& url)
+template <typename t> 
+static __forceinline cpr::Response cpr_get_timed(const t& url)
 {
 	return cpr::Get(cpr::Url{ url }, cpr::Timeout{ 4500 });
 }
@@ -21,11 +23,9 @@ bool get_client_id(void)
 				err::log("failed to automatically resolve client ID, please provide one using the -cid command");
 				return false;
 			}
-			else
-			{
-				err::warn("failed to resolve client ID, falling back to user provided ID");
-				return true;
-			}
+			
+			err::warn("failed to resolve client ID, falling back to user provided ID");
+			return true;
 		};
 
 	const cpr::Response r = cpr_get_timed("https://soundcloud.com/");
@@ -49,27 +49,9 @@ bool get_client_id(void)
 		return handle_parsing_err();
 	}
 
-	cfg::client_id = r.text.substr(offset, end_pos - offset);
+	cfg::client_id  = r.text.substr(offset, end_pos - offset);
 	cfg::f.save_cid = 1; // CID is automatically saved to cfg.json to minimize the amount of requests that must be made in the future
 	return true;
-}
-
-static void wide_to_mb(const std::wstring& src, std::string& dst)
-{
-	if (!src.empty())
-	{
-		dst.resize(src.size());
-		WideCharToMultiByte(CP_UTF8, 0, src.c_str(), -1, dst.data(), static_cast<int>(dst.size()), nullptr, nullptr);
-	}
-}
-
-static void mb_to_wide(const std::string& src, std::wstring& dst)
-{
-	if (!src.empty())
-	{
-		dst.resize(src.size());
-		MultiByteToWideChar(CP_UTF8, 0, src.c_str(), -1, dst.data(), static_cast<int>(dst.size()));
-	}
 }
 
 static void fix_artwork_url(std::string& url)
@@ -88,26 +70,6 @@ static void fix_artwork_url(std::string& url)
 	{
 		err::warn("failed to locate original cover art, falling back to default artwork URL");
 	}
-}
-
-static bool read_cover_file(TagLib::File& target_file, TagLib::ByteVector& buffer)
-{
-	std::ifstream file(cfg::image_src, std::ios::binary | std::ios::ate);
-	if (file.fail())
-	{
-		err::log(L"failed to open file \"{}\"", cfg::image_src);
-		target_file.save();
-		return false;
-	}
-
-	file.seekg(0, std::ios::beg);
-
-	const size_t sz = file.tellg();
-	buffer.resize(static_cast<UINT>(sz));
-
-	file.read(buffer.data(), sz);
-	file.close();
-	return true;
 }
 
 static bool request_failed(cpr::Response& r)
@@ -152,18 +114,17 @@ static bool request_failed(cpr::Response& r)
 
 static bool resolve_post(std::wstring& url, Json& buffer)
 {
-	// Erasing tracking data from link
+	// Erasing tracking data from link & resolving post
+	// https://developers.soundcloud.com/docs/api/guide#resolving
 
 	const size_t pos = url.find(L'?');
 	if (pos != std::string::npos) url.erase(pos);
-	
-	// Resolving post
 
 	std::string mb_url;
-	wide_to_mb(url, mb_url);
+	utils::str::wide_to_mb(url, mb_url);
 
 	cpr::Response r = cpr_get_timed("https://api-v2.soundcloud.com/resolve?url=" + mb_url + "&client_id=" + cfg::client_id);
-	if (request_failed(r)) return false;
+	if (request_failed(r))  return false;
 
 	buffer = Json::parse(r.text);
 	return true;
@@ -195,7 +156,7 @@ bool sc_upload::get_cover_art(cpr::Response& buffer) const
 	}
 	else
 	{
-		wide_to_mb(this->art_src, url);
+		utils::str::wide_to_mb(this->art_src, url);
 	}
 
 	buffer = cpr_get_timed(url);
@@ -219,8 +180,13 @@ bool sc_upload::get_cover_art(cpr::Response& buffer) const
 	return true;
 }
 
-void sc_upload::store_basic_tag_data(TagLib::Tag* tag) const
+void sc_upload::add_m4a_tag(const std::wstring& path) const
 {
+	// Saving basic metadata
+
+	TagLib::MP4::File file(path.c_str());
+	TagLib::MP4::Tag* const tag = file.tag();
+
 	tag->setAlbum(this->album);
 
 	tag->setTitle(this->title);
@@ -232,89 +198,57 @@ void sc_upload::store_basic_tag_data(TagLib::Tag* tag) const
 	tag->setComment(this->description);
 
 	tag->setYear(this->year);
-}
-
-void sc_upload::add_m4a_tag(const std::wstring& path) const
-{
-	// Saving basic metadata
-
-	TagLib::MP4::File file(path.c_str());
-	TagLib::MP4::Tag* const tag = file.tag();
-
-	this->store_basic_tag_data(tag);
 
 	// Getting cover art
 
-	TagLib::ByteVector raw_image;
-
-	if (cfg::f.cover_src_path)
+	if (this->cover_type != cover_types_t::invalid)
 	{
-		if (!read_cover_file(file, raw_image))
+		TagLib::ByteVector raw_image;
+
+		if (cfg::f.cover_src_path)
 		{
-			return;
+			// We assume that the extension has already been verified when parsing arguments (jpp/jpeg/png)
+
+			std::ifstream art_file(cfg::image_src, std::ios::binary | std::ios::ate);
+			if (art_file.fail())
+			{
+				err::log(L"failed to open file \"{}\"", cfg::image_src);
+				file.save();
+				return;
+			}
+
+			art_file.seekg(0, std::ios::beg);
+
+			const size_t sz = art_file.tellg();
+			raw_image.resize(static_cast<UINT>(sz));
+
+			art_file.read(raw_image.data(), sz);
+			art_file.close();
 		}
+		else
+		{
+			cpr::Response r;
+			if (!this->get_cover_art(r))
+			{
+				file.save();
+				return;
+			}
+
+			raw_image = { r.text.data(), static_cast<UINT>(r.text.size()) };
+		}
+
+		TagLib::MP4::CoverArtList cover_list;
+		cover_list.append({ this->cover_type == cover_types_t::png ? TagLib::MP4::CoverArt::PNG : TagLib::MP4::CoverArt::JPEG, raw_image });
+		tag->setItem("covr", TagLib::MP4::Item(cover_list));
 	}
 	else
 	{
-		cpr::Response r;
-		if (!this->get_cover_art(r))
-		{
-			file.save();
-			return;
-		}
-
-		raw_image = { r.text.data(), static_cast<UINT>(r.text.size()) };
+		err::warn("Failed to locate valid cover art");
 	}
-
-	TagLib::MP4::CoverArtList cover_list;
-	cover_list.append({ TagLib::MP4::CoverArt::PNG, raw_image });
-	tag->setItem("covr", TagLib::MP4::Item(cover_list));
 
 	if (!file.save())
 	{
 		err::warn("failed to save MP4 tag");
-	}
-}
-
-void sc_upload::add_mp3_tag(const std::wstring& path) const
-{
-	// Creating tag & saving basic metadata
-
-	TagLib::MPEG::File file(path.c_str());
-	TagLib::ID3v2::Tag* const tag = file.ID3v2Tag(true);
-
-	this->store_basic_tag_data(tag);
-
-	// Setting cover art
-
-	TagLib::ByteVector raw_image;
-
-	if (cfg::f.cover_src_path)
-	{
-		if (!read_cover_file(file, raw_image))
-		{
-			return;
-		}
-	}
-	else
-	{
-		cpr::Response r;
-		if (!this->get_cover_art(r))
-		{
-			file.save();
-			return;
-		}
-
-		raw_image = { r.text.data(), static_cast<UINT>(r.text.size()) };
-	}
-	
-	auto cover = new TagLib::ID3v2::AttachedPictureFrame; // not using std::make_unique because taglib takes ownership of the object
-	cover->setPicture(raw_image);
-	tag->addFrame(cover);
-
-	if (!file.save())
-	{
-		err::warn("failed to save ID3v2 tag");
 	}
 }
 
@@ -340,14 +274,13 @@ bool sc_upload::parse_manifest(const std::string& raw_data, std::vector<std::sha
 	// This is used to download .m3u/.m3u8 files. Both file types are similar, 
 	// with each containing an array of links that lead to file segments, which 
 	// you must append to eachother in the order of which the links are provided.
-	// All HLS transcodings I've seen lead to these, which is why we want progressive.
 
 	std::istringstream iss(raw_data);
 	std::string line;
 
 	for (uint8_t active_threads = 0; std::getline(iss, line);)
 	{
-		if (this->f.is_m4a_media && line.starts_with("#EXT-X-MAP:URI="))
+		if (line.starts_with("#EXT-X-MAP:URI="))
 		{
 			line.erase(0, line.find_first_of('\"') + 1);
 			line.pop_back();
@@ -411,7 +344,7 @@ bool sc_upload::parse_manifest(const std::string& raw_data, std::vector<std::sha
 
 				if (r.status_code != 200)
 				{
-					err::log("request failed (code = {}, url = {})", r.status_code, r.url.c_str());
+					err::log_net(r);
 					return false;
 				}
 			}
@@ -435,11 +368,11 @@ bool sc_upload::parse_manifest(const std::string& raw_data, std::vector<std::sha
 
 bool sc_upload::get_streaming_url(void)
 {
-	// We prefer progressive transcodings over HLS because progressive transcodings only require 
-	// one request to download the entire track, but HLS requires 10+ requests and forces you to 
-	// parse a manifest to get each link. Multi-threading significantly improves this process, but 
-	// even if it took the exact same amount of time as progressive downloads, we will want to 
-	// minimize requests to reduce the chances of rate limiting.
+	// Searching for valid media transcoding. In late 2025, SoundCloud deprecated non-aac transcodings. They claimed that 
+	// such transcodings will still exist for a transition period, but I assume that period is over. It appears that there 
+	// are no longer progressive transcodings, with everything being HLS AAC.
+	// https://developers.soundcloud.com/blog/api-streaming-urls
+	// https://github.com/soundcloud/api/issues/441
 
 	auto list = this->post_data.value("media", Json{});
 	if (list.empty())
@@ -455,37 +388,34 @@ bool sc_upload::get_streaming_url(void)
 		return false;
 	}
 
-	bool found = false, progressive_found = false;
+	bool found     = false;
+	bool found_96k = false; // True if an aac_96k was found. In such a case we continue searching and only update if we find aac_160k
 
 	for (const auto& transcoding : list)
 	{
-		// AAC transcodings are highest quality, and provide .m4a files rather than .mp3.
-		// You can't play these files Spotify or Apple Music so don't use for local files.
+		// We want to download the highest quality transcoding available, which, to my knowledge, 
+		// is aac_160k for non go+ users. 
 
-		if (transcoding["preset"] != "aac_160k")
+		const std::string preset = transcoding["preset"].get<std::string>();
+		if (preset.empty()) continue;
+
+		const uint32_t preset_hash = HASH_RT(preset.c_str());
+
+		if (preset_hash == HASH("aac_160k"))
 		{
-			const auto format = transcoding["format"];
-			const auto protocol = format["protocol"];
-
-			if (protocol == "progressive" || format["mime_type"] == "audio/mpeg")
-			{
-				this->streaming_url = transcoding["url"].get<std::string>() + "?client_id=" + cfg::client_id;
-				found = true;
-
-				if (protocol != "hls")
-				{
-					progressive_found = true;
-					break;
-				}
-			}
-		}
-		else if (cfg::f.use_aac)
-		{
-			this->streaming_url  = transcoding["url"].get<std::string>() + "?client_id=" + cfg::client_id;
-			this->f.is_m4a_media = true;
-
+			this->streaming_url = transcoding["url"].get<std::string>();
 			found = true;
 			break;
+		}
+		else if (preset_hash == HASH("aac_96k"))
+		{
+			this->streaming_url = transcoding["url"].get<std::string>();
+			found_96k = found = true;
+		}
+		else if (preset_hash == HASH("abr_sq") && !found_96k)
+		{
+			this->streaming_url = transcoding["url"].get<std::string>();
+			found = true;
 		}
 	}
 
@@ -495,7 +425,25 @@ bool sc_upload::get_streaming_url(void)
 		return false;
 	}
 
-	this->f.is_hls_mpeg = !progressive_found;
+	// Fixing up the streaming URL (private tracks have a secret_token param)
+
+	if (this->streaming_url.find('?') == std::string::npos)
+	{
+		this->streaming_url += '?';
+	}
+	else
+	{
+		this->streaming_url += '&';
+	}
+
+	this->streaming_url += "client_id=" + cfg::client_id;
+
+#ifdef _DEBUG
+
+	std::println("Streaming URL: {}", this->streaming_url);
+
+#endif // #ifdef _DEBUG
+
 	return true;
 }
 
@@ -515,22 +463,16 @@ bool sc_upload::download_track(void)
 
 	std::vector<std::shared_future<cpr::Response>> hls_parts;
 	const char* raw_audio  = nullptr;
-	size_t      audio_size = 0;
-	const bool  use_parts  = this->f.is_hls_mpeg || this->f.is_m4a_media;
+	size_t audio_size = 0;
 
-	if (!use_parts)
-	{
-		raw_audio  = r.text.data();
-		audio_size = r.text.size();
-	}
-	else if (!this->parse_manifest(r.text, hls_parts))
+	if (!this->parse_manifest(r.text, hls_parts))
 	{
 		return false;
 	}
 
 	// Writing track to disk
 
-	const std::wstring path = cfg::audio_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + (this->f.is_m4a_media ? L".m4a" : L".mp3");
+	const std::wstring path = cfg::audio_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".m4a";
 
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (file.fail())
@@ -541,29 +483,21 @@ bool sc_upload::download_track(void)
 
 	bool failed = false;
 
-	if (use_parts)
+	for (auto& future : hls_parts)
 	{
-		for (auto& future : hls_parts)
+		if (!future.valid())
 		{
-			if (!future.valid())
-			{
-				throw std::future_error(std::future_errc::no_state);
-			}
-
-			const cpr::Response& r = future.get();
-			file.write(r.text.c_str(), r.text.size());
-
-			if (file.fail())
-			{
-				failed = true;
-				break;
-			}
+			throw std::future_error(std::future_errc::no_state);
 		}
-	}
-	else
-	{
-		file.write(raw_audio, audio_size);
-		failed = file.fail();
+
+		const cpr::Response& r = future.get();
+		file.write(r.text.c_str(), r.text.size());
+
+		if (file.fail())
+		{
+			failed = true;
+			break;
+		}
 	}
 
 	file.close();
@@ -577,27 +511,19 @@ bool sc_upload::download_track(void)
 
 	// Adding tag
 
-	if (this->f.is_m4a_media)
-	{
-		this->add_m4a_tag(path);
-	}
-	else
-	{
-		this->add_mp3_tag(path);
-	}
-
+	this->add_m4a_tag(path);
 	return true;
 }
 
 bool sc_upload::download_album(void)
 {
-	std::cout << "ERROR: album/playlist downloads arent actually implemented yet despite what the readme says cuz its not something i care abt lol. open an issue on the repo and ill add it for u!!\n";
+	std::println("ERROR: album/playlist downloads arent actually implemented yet despite what the readme says cuz its not something i care abt lol. open an issue on the repo and ill add it for u!!");
 	return false;
 }
 
 bool sc_upload::download_cover(void) const
 {
-	cpr::Response r = cpr_get_timed(this->artwork_url);
+	const cpr::Response r = cpr_get_timed(this->artwork_url);
 	if (r.status_code != 200) return false;
 
 	const std::wstring& file_name = cfg::g_data.image_name.empty() ? this->title : cfg::g_data.image_name;
@@ -626,7 +552,7 @@ void sc_upload::get_misc_metadata(void)
 
 	if (cfg::g_data.genre.empty())
 	{
-		mb_to_wide(post_data.value("genre"), this->genre);
+		utils::str::mb_to_wide(post_data.value("genre"), this->genre);
 	}
 	else
 	{
@@ -672,7 +598,7 @@ void sc_upload::create_comments(void)
 
 	auto add_comment = [this, &temp](PCWSTR label, PCSTR value)
 		{
-			mb_to_wide(this->post_data.value(value), temp);
+			utils::str::mb_to_wide(this->post_data.value(value), temp);
 
 			if (!temp.empty())
 			{
@@ -702,7 +628,7 @@ void sc_upload::get_album(void)
 		cpr::Response r = cpr_get_timed("https://api-v2.soundcloud.com/tracks/" + std::to_string(post_data["id"].get<int>()) + "/albums?client_id=" + cfg::client_id);
 		if (request_failed(r))
 		{
-			std::cout << "ignoring failure, continuing download\n";
+			std::println("ignoring failure, continuing download");
 		}
 		else
 		{
@@ -710,7 +636,7 @@ void sc_upload::get_album(void)
 
 			if (!album_data.empty())
 			{
-				mb_to_wide(album_data[0].value("title"), this->album);
+				utils::str::mb_to_wide(album_data[0].value("title"), this->album);
 			}
 		}
 
@@ -725,13 +651,13 @@ void sc_upload::get_album(void)
 	}
 }
 
-void sc_upload::get_art_and_title(void)
+bool sc_upload::get_art_and_title(void)
 {
 	// Getting title
 
 	if (cfg::g_data.title.empty())
 	{
-		mb_to_wide(post_data.value("title"), this->title);
+		utils::str::mb_to_wide(post_data.value("title"), this->title);
 		this->title.resize(lstrlenW(this->title.c_str()));
 	}
 	else
@@ -742,21 +668,34 @@ void sc_upload::get_art_and_title(void)
 	// Getting artwork URL
 
 	this->artwork_url = post_data.value("artwork_url", post_data.value("avatar_url"));
-	if (!this->artwork_url.empty())
-	{
-		fix_artwork_url(this->artwork_url);
-	}
+	if (!this->artwork_url.empty()) fix_artwork_url(this->artwork_url);
 
 	// Getting MP3 artwork source
 
 	if (cfg::image_src.empty())
 	{
-		mb_to_wide(this->artwork_url, this->art_src);
+		utils::str::mb_to_wide(this->artwork_url, this->art_src);
 	}
 	else
 	{
 		this->art_src = cfg::image_src;
 	}
+
+	if (this->art_src.ends_with(L".jpg") || this->art_src.ends_with(L".jpeg"))
+	{
+		this->cover_type = cover_types_t::jpg;
+	}
+	else if (this->art_src.ends_with(L".png"))
+	{
+		this->cover_type = cover_types_t::png;
+	}
+	else
+	{
+		err::warn("invalid cover source detected, must be a jpg/jpeg/png");
+		return false;
+	}
+
+	return true;
 }
 
 bool sc_upload::get_artist(void)
@@ -765,15 +704,14 @@ bool sc_upload::get_artist(void)
 	{
 		std::string mb_artist;
 
-		if ((mb_artist = post_data.value("publisher_metadata", Json{}).value("artist")).empty()
-			&& (mb_artist = post_data.value("user", Json{}).value("username")).empty())
+		if ((mb_artist = post_data.value("publisher_metadata", Json{}).value("artist")).empty() && (mb_artist = post_data.value("user", Json{}).value("username")).empty())
 		{
 			err::log("failed to get publisher_metadata.artist or user.username");
-			this->f.error_occured = true;
+			this->f.err_occured = true;
 			return false;
 		}
 
-		mb_to_wide(mb_artist, this->artist);
+		utils::str::mb_to_wide(mb_artist, this->artist);
 	}
 	else
 	{
@@ -791,7 +729,7 @@ bool sc_upload::get_resolution_data(void)
 	if (kind.empty())
 	{
 		err::log("failed to get 'kind' field from metadata");
-		this->f.error_occured = true;
+		this->f.err_occured = true;
 		return false;
 	}
 
@@ -802,7 +740,7 @@ bool sc_upload::get_resolution_data(void)
 
 		if (!this->get_streaming_url())
 		{
-			this->f.error_occured = true;
+			this->f.err_occured = true;
 		}
 	}
 	else
@@ -811,7 +749,7 @@ bool sc_upload::get_resolution_data(void)
 
 		if (!this->get_track_ids())
 		{
-			this->f.error_occured = true;
+			this->f.err_occured = true;
 		}
 	}
 
@@ -822,23 +760,32 @@ sc_upload::sc_upload(std::wstring url)
 {
 	if (!resolve_post(url, this->post_data))
 	{
-		this->f.error_occured = true;
+		this->f.err_occured = true;
 		return;
 	}
 
-	if (!this->get_resolution_data() || !this->get_artist())
+	if (!this->get_resolution_data())
+	{
+		this->f.err_occured = true;
+		return;
+	}
+
+	if (!this->get_artist())
 	{
 		return;
 	}
 
-	this->get_art_and_title();
-
-	if (cfg::cover_art_only()) 
+	if (!this->get_art_and_title())
 	{
 		return;
 	}
 
-	this->get_album();
-	this->create_comments();
-	this->get_misc_metadata();
+	if (!cfg::cover_art_only()) 
+	{
+		this->get_album();
+
+		this->create_comments();
+
+		this->get_misc_metadata();
+	}
 }

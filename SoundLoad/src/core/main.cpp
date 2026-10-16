@@ -138,7 +138,7 @@ int wmain(int argc, wchar_t* argv[])
 	fix_path(cfg::image_dir);
 
 	sc_upload post(argv[1]);
-	if (post.f.error_occured || !post.download())
+	if (post.f.err_occured || !post.download())
 	{
 		return 1;
 	}

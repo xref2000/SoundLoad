@@ -1,14 +1,9 @@
 # SoundLoad
 The goal of this project is to help SoundCloud users save their favorite songs 
-with as much data as possible preserved, and to simplify the process of porting 
-songs to other platforms, which can be very tedious normally. I'm aware that 
-the people using this will have little to no technical experience, so I've explained 
-exactly how to use the program in a way that anyone with a browser and ChatGPT 
-should be able to figure out.
-
-If you prefer porting music to Spotify or Apple Music, you should not enable AAC 
-downloads, as neither platforms will play them. The difference in bitrate is
-negligible anyway, so this should only be used if you care about archiving.
+with as much data as possible preserved and to simplify the process of porting 
+songs to other platforms. I'm aware that the people using this will have little 
+to no technical experience, so I've explained exactly how to use the program in 
+a way that anyone with a browser and ChatGPT should be able to figure out.
 
 ## Installation & usage
 If you know how to use command line programs you can skip this. If you don't, 
@@ -22,7 +17,7 @@ follow these steps to use the program:
 - Type `sl -?` and hit enter to see a list of all available features, or reference the table below
 
 If you allow the program to add itself to PATH variables (it will ask), you 
-will not have to open the files directory in the future, instead you will be 
+will not have to open the file's directory in the future, instead you will be 
 able to quickly open cmd and use the program immediately.
 
 ## Arguments (case-insensitive)
@@ -40,9 +35,7 @@ able to quickly open cmd and use the program immediately.
 | `-audio-name` | `-aname` | Audio file name                                      |     ❌    |        ✅      |
 | `-audio-dst`  |  `-adst` | Audio output directory                               |     ✅    |        ✅      |
 | `-audio`      |     —    | Enables audio downloads                              |     ✅    |        ✅      |
-| `-n-audio`    |     —    | Disables MP3 downloads                               |     ✅    |        ✅      |
-| `-aac`        |     —    | Enables lossless downloads                           |     ✅    |        ✅      |
-| `-n-aac`      |     —    | Disables lossless downloads                          |     ✅    |        ✅      |
+| `-n-audio`    |     —    | Disables audio downloads                             |     ✅    |        ✅      |
 | `-title`      |   `-t`   | Audio tag title                                      |     ❌    |        ❌      |
 | `-comment`    |   `-c`   | Audio tag comment                                    |     ❌    |        ✅      |
 | `-artists`    |   `-a`   | Audio tag contributing artists                       |     ❌    |        ❌      |
@@ -62,10 +55,10 @@ c:>sl -adst c:/music -idst c:/art -s
 ```
 
 ### Downloading a song
-This will download the song, name the audio file "Extra Stixx", and set the contributing artists to "Pook G, Lul Jody".
+This will download the song, name the track "Extra Stixx", and set the contributing artists to "Pook G, Lul Jody".
 Other metadata will be automatically scraped from the page, but can of course be set manually.
 ```
-c:>sl https://soundcloud.com/fat-kid-915108395/exrta-stixxs-ft-pook-g-lul -aname "Extra Stixx" -a "Pook G, Lul Jody"
+c:>sl https://soundcloud.com/fat-kid-915108395/exrta-stixxs-ft-pook-g-lul -t "Extra Stixx" -a "Pook G, Lul Jody"
 ```
 
 ### Downloading an album
@@ -100,9 +93,9 @@ I can add it for you, because compiling projects like this from source would pro
 nightmare for someone who has no clue what they're doing.
 ```C++
 // Don't worry about the confusing syntax here, you don't touch this block of code at all
-auto add_comment = [this, &post_data, &temp](PCWSTR label, PCSTR value)
+auto add_comment = [this, &temp](PCWSTR label, PCSTR value)
 	{
-		mb_to_wide(post_data.value(value), temp);
+		mb_to_wide(this->post_data.value(value), temp);
 
 		if (!temp.empty()) // only continues if the desired field exists and contains data
 		{

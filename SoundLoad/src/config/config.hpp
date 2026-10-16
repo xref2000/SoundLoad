@@ -7,12 +7,11 @@ struct cfg_format
 	std::string  cid;
 	std::wstring art_out_dir;
 	std::wstring track_out_dir;
-	bool get_track_audio     = true;
-	bool get_track_art       = false;
-	bool get_aac_transcoding = false;
+	bool get_track_audio = true;
+	bool get_track_art   = false;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(cfg_format, cid, art_out_dir, track_out_dir, get_track_audio, get_track_art, get_aac_transcoding)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(cfg_format, cid, art_out_dir, track_out_dir, get_track_audio, get_track_art)
 
 // CONFIG DATA
 
@@ -24,21 +23,19 @@ namespace cfg
 
 	struct cfg_flags_t
 	{
-		// 13/16 bits used
+		// 11/16 bits used
 
-		UINT16 add_to_path       : 1; // Adds program to PATH variables
-		UINT16 save_cfg          : 1; // Saves applicable arguments to config (set when -save is used)
-		UINT16 save_cid          : 1; // Saves the client ID to config. Set when a client ID is automatically resolved.
-		UINT16 seperate_art      : 1; // [saveable] downloads track's cover art to its own file
-		UINT16 no_seperate_art   : 1; // [saveable] [default] disables the seperate_art flag if it was saved to config
-		UINT16 download_audio    : 1; // [saveable] [default] reenables audio downloads if disabled by no_audio_download in config
-		UINT16 no_audio_download : 1; // [saveable] disables audio downloads
-		UINT16 use_aac           : 1; // [saveable] Downloads lossless m4a media transcoding
-		UINT16 no_aac            : 1; // [saveable] [default] Disables lessless m4a media transcoding downloads
-		UINT16 no_link_provided  : 1; // Indicates that no link was provided - used when modifying config without downloading anything
-		UINT16 cover_src_path    : 1; // Provided source for audio cover art is an image path on the computer
-		UINT16 cover_src_sc_link : 1; // Provided source for audio cover art is a SoundCloud link (uses cover art from song/profile)
-		UINT16 fresh_cfg         : 1; // cfg.json was just created
+		uint16_t add_to_path       : 1; // Adds program to PATH variables
+		uint16_t save_cfg          : 1; // Saves applicable arguments to config (set when -save is used)
+		uint16_t save_cid          : 1; // Saves the client ID to config. Set when a client ID is automatically resolved.
+		uint16_t seperate_art      : 1; // [saveable] downloads track's cover art to its own file
+		uint16_t no_seperate_art   : 1; // [saveable] [default] disables the seperate_art flag if it was saved to config
+		uint16_t download_audio    : 1; // [saveable] [default] reenables audio downloads if disabled by no_audio_download in config
+		uint16_t no_audio_download : 1; // [saveable] disables audio downloads
+		uint16_t no_link_provided  : 1; // Indicates that no link was provided - used when modifying config without downloading anything
+		uint16_t cover_src_path    : 1; // Provided source for audio cover art is an image path on the computer
+		uint16_t cover_src_sc_link : 1; // Provided source for audio cover art is a SoundCloud link (uses cover art from song/profile)
+		uint16_t fresh_cfg         : 1; // cfg.json was just created
 	} inline f = {};
 
 	struct track_data_t
@@ -90,11 +87,6 @@ namespace cfg
 	__forceinline bool art_flags_set(void)
 	{
 		return cfg::f.seperate_art || cfg::f.no_seperate_art;
-	}
-
-	__forceinline bool aac_flags_set(void)
-	{
-		return cfg::f.use_aac || cfg::f.no_aac;
 	}
 
 	__forceinline bool cover_art_only(void)
