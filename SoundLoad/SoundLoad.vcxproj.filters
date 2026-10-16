@@ -16,6 +16,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\m4a\m4a.cpp" />
     <ClCompile Include="src\config\config.cpp">
       <Filter>src\config</Filter>
     </ClCompile>
@@ -30,6 +31,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\m4a\m4a.hpp" />
     <ClInclude Include="src\config\config.hpp">
       <Filter>src\config</Filter>
     </ClInclude>

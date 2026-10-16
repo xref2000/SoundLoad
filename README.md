@@ -80,17 +80,13 @@ c:>sl https://soundcloud.com/sellasouls/bdayy-sexxx -n-audio -art -s
 
 ## Extensibility
 I understand that it's unlikely anyone using this has experience with C++. If that's you, 
-feel free to open an issue on this repository or reach out via git@vmcall.dev and tell me 
-what you'd like added and I will add it. That being said, the source code is structured in 
+feel free to open an issue on this repository. That being said, the source code is structured in 
 such a way that makes adding new metadata fields extremely simple. First, go to 
 `https://api-v2.soundcloud.com/resolve?url=put_link_here&client_id=your_cid` and take note 
 of any fields you would like to archive. You then go to `sc_api.cpp/sc_upload::create_comments` 
 and use the `add_comment` lambda, which takes just one simple line of code. Below is a 
 snippet from the source code with extra comments added explaining exactly how it works 
-and showing multiple examples for those who would like to do it on their own but don't 
-have experience with C++, though if this is you I strongly suggest reaching out to me so 
-I can add it for you, because compiling projects like this from source would probably be a 
-nightmare for someone who has no clue what they're doing.
+and showing multiple examples for those who would like to do it on their own.
 ```C++
 // Don't worry about the confusing syntax here, you don't touch this block of code at all
 auto add_comment = [this, &temp](PCWSTR label, PCSTR value)
@@ -153,8 +149,6 @@ That being said, please open an issue on this repository if it's failing to reso
 a client ID automatically, as failure is indicative of a SoundCloud update.
 
 ## Notes
-- Windows doesn't parse metadata properly. VLC doesn't have this issue, so check there if something 
-  seems out of place.
 - `nlohmann::json::value` has multiple modifications in this repo - check `pch.hpp` for more info.
 - Unicode characters are supported, though they won't be displayed properly on command line due to 
   the limited character set. You can safely ignore that and paste any unicode character, it will save as expected.

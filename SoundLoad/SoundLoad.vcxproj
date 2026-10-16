@@ -20,6 +20,18 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
+    <VcpkgRoot Condition="'$(VcpkgRoot)'==''">$(MSBuildThisFileDirectory)..\.deps\vcpkg\</VcpkgRoot>
+    <SoundLoadVcpkgRoot>$([MSBuild]::EnsureTrailingSlash('$(VcpkgRoot)'))</SoundLoadVcpkgRoot>
+    <OutDir>$(MSBuildThisFileDirectory)..\bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\obj\$(Platform)\$(Configuration)\</IntDir>
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+    <VcpkgManifestRoot>$(MSBuildThisFileDirectory)..\</VcpkgManifestRoot>
+    <VcpkgManifestInstalledBaseDir>$(MSBuildThisFileDirectory)..\vcpkg_installed\</VcpkgManifestInstalledBaseDir>
+    <VcpkgInstalledDir>$(VcpkgManifestInstalledBaseDir)</VcpkgInstalledDir>
+    <VcpkgTriplet Condition="'$(Platform)'=='Win32'">x86-windows-static</VcpkgTriplet>
+    <VcpkgTriplet Condition="'$(Platform)'!='Win32'">x64-windows-static</VcpkgTriplet>
+    <VcpkgHostTriplet>x64-windows-static</VcpkgHostTriplet>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{3b41ae55-492c-4532-aded-c9da9c2e0dd0}</ProjectGuid>
     <RootNamespace>SoundLoad</RootNamespace>
@@ -88,16 +100,15 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\core\;$(ProjectDir)includes\;$(ProjectDir)includes\taglib\toolkit;$(ProjectDir)includes\taglib\;$(ProjectDir)includes\taglib\mpeg\id3v2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\core;$(ProjectDir)includes</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)includes</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cpr/cpr.lib;taglib/tag.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -108,17 +119,16 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\core\;$(ProjectDir)includes\;$(ProjectDir)includes\taglib\toolkit;$(ProjectDir)includes\taglib\;$(ProjectDir)includes\taglib\mpeg\id3v2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\core;$(ProjectDir)includes</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)includes</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cpr/cpr.lib;taglib/tag.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -130,13 +140,12 @@
       <LanguageStandard>stdcpp23</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\core\;$(ProjectDir)includes\;$(ProjectDir)includes\taglib\toolkit;$(ProjectDir)includes\taglib\;$(ProjectDir)includes\taglib\mpeg\id3v2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\core;$(ProjectDir)includes</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)includes</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cpr/cpr.lib;taglib/tag.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -151,16 +160,17 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\core\;$(ProjectDir)includes\;$(ProjectDir)includes\taglib\toolkit;$(ProjectDir)includes\taglib\;$(ProjectDir)includes\taglib\mpeg\id3v2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\core;$(ProjectDir)includes</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)includes</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cpr/cpr.lib;taglib/tag.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <Import Project="dependencies.props" />
   <ItemGroup>
+    <ClCompile Include="src\m4a\m4a.cpp" />
     <ClCompile Include="src\config\config.cpp" />
     <ClCompile Include="src\core\main.cpp" />
     <ClCompile Include="src\core\pch.cpp">
@@ -172,6 +182,7 @@
     <ClCompile Include="src\site_api\site_api.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\m4a\m4a.hpp" />
     <ClInclude Include="src\config\config.hpp" />
     <ClInclude Include="src\core\logs.hpp" />
     <ClInclude Include="src\core\pch.hpp" />
@@ -179,6 +190,7 @@
     <ClInclude Include="src\utils\utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="$(SoundLoadVcpkgRoot)scripts\buildsystems\msbuild\vcpkg.targets" Condition="Exists('$(SoundLoadVcpkgRoot)scripts\buildsystems\msbuild\vcpkg.targets') and '$(_ZVcpkgRoot)' == ''" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>
