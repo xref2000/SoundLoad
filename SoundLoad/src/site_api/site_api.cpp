@@ -3,9 +3,10 @@
 #include "config/config.hpp"
 #include "site_api.hpp"
 #include "utils/utils.hpp"
+#include "m4a/m4a.hpp"
 
 //
-//// HELPER FUNCTIONS
+//// HELPERS
 //
 
 template <typename t> 
@@ -269,7 +270,7 @@ bool sc_upload::get_track_ids(void)
 	return true;
 }
 
-bool sc_upload::parse_manifest(const std::string& raw_data, std::vector<std::shared_future<cpr::Response>>& buffer)
+bool sc_upload::parse_manifest(const std::string& raw_data, std::deque<std::shared_future<cpr::Response>>& buffer)
 {
 	// This is used to download .m3u/.m3u8 files. Both file types are similar, 
 	// with each containing an array of links that lead to file segments, which 
@@ -449,7 +450,7 @@ bool sc_upload::get_streaming_url(void)
 
 bool sc_upload::download_track(void)
 {
-	// Downloading track (MP3 or M4A)
+	// Downloading M4A
 
 	cpr::Response r = cpr_get_timed(this->streaming_url);
 	if (request_failed(r)) return false;
@@ -458,60 +459,51 @@ bool sc_upload::download_track(void)
 	if (r.status_code != 200) return false;
 
 	this->streaming_url.clear();
-	
-	// Finalizing download
 
-	std::vector<std::shared_future<cpr::Response>> hls_parts;
-	const char* raw_audio  = nullptr;
-	size_t audio_size = 0;
+	// Parsing HLS manifest and writing to temp file for remuxing
 
-	if (!this->parse_manifest(r.text, hls_parts))
+	std::deque<std::shared_future<cpr::Response>> hls_parts;
+	if (!this->parse_manifest(r.text, hls_parts)) return false;
+
+	std::wstring path = cfg::audio_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_");
+	const std::wstring temp_path = path + L".tmp";
+
+	std::ofstream temp_file(temp_path, std::ios::binary | std::ios::trunc);
+	if (!temp_file)
 	{
+		err::log(L"failed to create temp file at \"{}\"", path);
 		return false;
 	}
-
-	// Writing track to disk
-
-	const std::wstring path = cfg::audio_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".m4a";
-
-	std::ofstream file(path, std::ios::binary | std::ios::trunc);
-	if (file.fail())
-	{
-		err::log(L"failed to create file at \"{}\"", path);
-		return false;
-	}
-
-	bool failed = false;
 
 	for (auto& future : hls_parts)
 	{
-		if (!future.valid())
-		{
-			throw std::future_error(std::future_errc::no_state);
-		}
-
-		const cpr::Response& r = future.get();
-		file.write(r.text.c_str(), r.text.size());
-
-		if (file.fail())
-		{
-			failed = true;
-			break;
-		}
+		const cpr::Response& part = future.get();
+		temp_file.write(part.text.data(), part.text.size());
+		if (!temp_file) break;
 	}
 
-	file.close();
+	temp_file.close();
 	hls_parts.clear();
 
-	if (failed)
+	if (!temp_file)
 	{
-		err::log(L"failed to write to file \"{}\"", path);
+		err::log(L"failed to write downloaded audio for \"{}\"", temp_path);
 		return false;
 	}
 
-	// Adding tag
+	// Remuxing M4A (basically means that stuff like the time won't be fucked up)
 
+	path += L".m4a";
+
+	if (!media::remux_m4a(temp_path, path))
+	{
+		err::log("M4A remux failed");
+		return false;
+	}
+
+	std::filesystem::remove(temp_path);
 	this->add_m4a_tag(path);
+
 	return true;
 }
 
@@ -596,7 +588,7 @@ void sc_upload::create_comments(void)
 
 	std::wstring temp;
 
-	auto add_comment = [this, &temp](PCWSTR label, PCSTR value)
+	auto add_comment = [this, &temp](const wchar_t* label, const char* value)
 		{
 			utils::str::mb_to_wide(this->post_data.value(value), temp);
 

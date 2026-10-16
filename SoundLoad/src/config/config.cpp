@@ -71,10 +71,7 @@ namespace cfg
 		for (int i = 1 + ((cfg::f.no_link_provided) == false); i < argc; ++i)
 		{
 			const wchar_t* arg = argv[i];
-			auto log_bad_arg = [&arg](void) 
-				{ 
-					err::log(L"invalid argument \"{}\"", arg); 
-				};
+			auto log_bad_arg = [&arg](void) { err::log(L"invalid argument \"{}\"", arg); };
 
 			if (arg[0] != '-' || !arg[1])
 			{
@@ -87,13 +84,13 @@ namespace cfg
 
 			switch (arg_hash)
 			{
-			case HASH(L"s"):       { [[fallthrough]];                        }
-			case HASH(L"save"):    { cfg::f.save_cfg          = true; break; }
-			case HASH(L"art"):     { cfg::f.seperate_art      = true; break; }
-			case HASH(L"n-art"):   { cfg::f.no_seperate_art   = true; break; }
-			case HASH(L"audio"):   { cfg::f.download_audio    = true; break; }
-			case HASH(L"n-audio"): { cfg::f.no_audio_download = true; break; }
-			case HASH(L"pvars"):   { cfg::f.add_to_path       = true; break; }
+			case HASH("s"):       { [[fallthrough]];                        }
+			case HASH("save"):    { cfg::f.save_cfg          = true; break; }
+			case HASH("art"):     { cfg::f.seperate_art      = true; break; }
+			case HASH("n-art"):   { cfg::f.no_seperate_art   = true; break; }
+			case HASH("audio"):   { cfg::f.download_audio    = true; break; }
+			case HASH("n-audio"): { cfg::f.no_audio_download = true; break; }
+			case HASH("pvars"):   { cfg::f.add_to_path       = true; break; }
 
 			default: handled = false;
 			}
@@ -119,50 +116,50 @@ namespace cfg
 				{
 					// Config data arguments
 
-				case HASH(L"iname"): [[fallthrough]];
-				case HASH(L"img-name"):   { cfg::g_data.image_name = next_arg; break; }
+				case HASH("iname"): [[fallthrough]];
+				case HASH("img-name"):   { cfg::g_data.image_name = next_arg; break; }
 
-				case HASH(L"aname"): [[fallthrough]];
-				case HASH(L"audio-name"): { cfg::g_data.audio_name = next_arg; break; }
+				case HASH("aname"): [[fallthrough]];
+				case HASH("audio-name"): { cfg::g_data.audio_name = next_arg; break; }
 
-				case HASH(L"idst"):  [[fallthrough]];
-				case HASH(L"img-dst"):    { cfg::image_dir         = next_arg; break; }
+				case HASH("idst"):  [[fallthrough]];
+				case HASH("img-dst"):    { cfg::image_dir         = next_arg; break; }
 
-				case HASH(L"adst"):  [[fallthrough]];
-				case HASH(L"audio-dst"):  { cfg::audio_dir         = next_arg; break; }
+				case HASH("adst"):  [[fallthrough]];
+				case HASH("audio-dst"):  { cfg::audio_dir         = next_arg; break; }
 
-				case HASH(L"isrc"):  [[fallthrough]];
-				case HASH(L"img-src"):    { cfg::image_src         = next_arg; break; }
+				case HASH("isrc"):  [[fallthrough]];
+				case HASH("img-src"):    { cfg::image_src         = next_arg; break; }
 
 					// Audio tag arguments
 
-				case HASH(L"t"):  [[fallthrough]];
-				case HASH(L"title"):    { cfg::g_data.title           = next_arg; break; }
+				case HASH("t"):  [[fallthrough]];
+				case HASH("title"):    { cfg::g_data.title           = next_arg; break; }
 
-				case HASH(L"c"):  [[fallthrough]];
-				case HASH(L"comment"):  { cfg::g_data.comments        = next_arg; break; }
+				case HASH("c"):  [[fallthrough]];
+				case HASH("comment"):  { cfg::g_data.comments        = next_arg; break; }
 
-				case HASH(L"a"):  [[fallthrough]];
-				case HASH(L"artists"):  { cfg::g_data.contrib_artists = next_arg; break; }
+				case HASH("a"):  [[fallthrough]];
+				case HASH("artists"):  { cfg::g_data.contrib_artists = next_arg; break; }
 
-				case HASH(L"aa"): [[fallthrough]];
-				case HASH(L"a-artist"): { cfg::g_data.album_artists   = next_arg; break; }
+				case HASH("aa"): [[fallthrough]];
+				case HASH("a-artist"): { cfg::g_data.album_artists   = next_arg; break; }
 
-				case HASH(L"al"): [[fallthrough]];
-				case HASH(L"album"):    { cfg::g_data.album           = next_arg; break; }
+				case HASH("al"): [[fallthrough]];
+				case HASH("album"):    { cfg::g_data.album           = next_arg; break; }
 
-				case HASH(L"g"):  [[fallthrough]];
-				case HASH(L"genre"):    { cfg::g_data.genre           = next_arg; break; }
+				case HASH("g"):  [[fallthrough]];
+				case HASH("genre"):    { cfg::g_data.genre           = next_arg; break; }
 
-				case HASH(L"n"):  [[fallthrough]];
-				case HASH(L"num"):      { cfg::g_data.number          = next_arg; break; }
+				case HASH("n"):  [[fallthrough]];
+				case HASH("num"):      { cfg::g_data.number          = next_arg; break; }
 
-				case HASH(L"y"):  [[fallthrough]];
-				case HASH(L"year"):     { cfg::g_data.year            = next_arg;   break; }
+				case HASH("y"):  [[fallthrough]];
+				case HASH("year"):     { cfg::g_data.year            = next_arg; break; }
 
 					// Extra
 
-				case HASH(L"cid"):
+				case HASH("cid"):
 				{
 					cfg::client_id.resize(lstrlenW(next_arg));
 					WideCharToMultiByte(CP_UTF8, 0, next_arg, -1, cfg::client_id.data(), static_cast<int>(cfg::client_id.size()), nullptr, nullptr);

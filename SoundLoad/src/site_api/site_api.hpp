@@ -46,7 +46,7 @@ private:
 
 	bool download_cover(void) const;
 
-	bool parse_manifest(const std::string& raw_data, std::vector<std::shared_future<cpr::Response>>& buffer);
+	bool parse_manifest(const std::string& raw_data, std::deque<std::shared_future<cpr::Response>>& buffer);
 
 	bool get_streaming_url(void);
 
@@ -78,9 +78,9 @@ public:
 	{
 		// 3/8 bits used
 
-		uint8_t err_occured : 1; // An error occured in the constructor
-		uint8_t is_track    : 1; // Object represents a singular track
-		uint8_t is_album    : 1; // Object represents an album or playlist
+		uint8_t err_occured : 1; // an error occured in the constructor
+		uint8_t is_track    : 1; // object represents a singular track
+		uint8_t is_album    : 1; // object represents an album or playlist
 	} f = {};
 
 	//
@@ -100,7 +100,7 @@ public:
 
 			if (cfg::f.no_audio_download)
 			{
-				std::cout << "WARNING: only downloaded cover art\n";
+				std::println("WARNING: only downloaded cover art");
 			}
 		}
 

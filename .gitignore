@@ -33,7 +33,13 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+# ignoring the weird dependency shit chatgpt cooked up cuz i was too lazy to get it statically linked myself
+# and i doubt that whatever the hell it did works on any system except mine. good luck if you wanna build from source.
+vcpkg.json
+scripts/*
 soundload/includes/curl/*
+soundload/dependencies.props
+
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
@@ -364,3 +370,10 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /SoundLoad/cfg.json
+
+# Local FFmpeg development SDK
+/SoundLoad/includes/ffmpeg/
+
+# Source-built static dependencies
+/.deps/
+/vcpkg_installed/
